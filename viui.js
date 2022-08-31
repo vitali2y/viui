@@ -1,15 +1,15 @@
 //
-// viui.js
+// vijs
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
 
-var appList = []
-var featureList = {}
-var appActive
+let appList = []
+let featureList = {}
+let appActive
 
 
-function init(featureArr) {
+function initFeatures(featureArr) {
   featureList = featureArr
 }
 
@@ -68,7 +68,10 @@ function _callBackend(app, method, params, isSecureCall, cb) {
   featureList["spin-on"] && featureList["spin-on"]()
   fetch(app, p)
     .then(resp => resp.json())
-    .then(fetched => { featureList["spin-on"] && featureList["spin-off"](); cb && cb(fetched) })
+    .then(fetched => {
+      featureList["spin-on"] && featureList["spin-off"]()
+      cb && cb(fetched)
+    })
     .catch(err => console.log("oops, error:", err))
 }
 
@@ -367,7 +370,7 @@ function remove(key) {
 }
 
 
-function isEmptyObj(obj) {
+function isObjEmpty(obj) {
   return JSON.stringify(obj) === '{}'
 }
 
@@ -433,9 +436,10 @@ function postinitPictures(elName, tabName) {
 
 // post init for status columns
 function postinitStatuses(elName, tabName) {
-  // TODO: to preliminary pass innerHTML and title sets via ui.init()
-  byQuery(`#el-${elName} .content_${tabName} .status-tooltip`)
+  // TODO: to preliminary pass innerHTML and title sets via init()
+  byQuery(`#app-${elName} .content_${tabName} .status-tooltip`)
     .forEach(function (el) {
+      console.log("innerText:", el.innerText, elName)
       switch (el.innerText) {
         // NOTE: innerHTML codes @ MaterialIcons.css
         case "1":
@@ -457,6 +461,14 @@ function postinitStatuses(elName, tabName) {
         case "N":
           el.innerHTML = "&#xe8e7;" // .md-task_alt
           el.title = "Enabled"
+          break
+        case "yes":
+          el.innerHTML = "&#xe8e7;" // .md-task_alt
+          el.title = "Yes"
+          break
+        case "no":
+          el.innerHTML = "&#xe303;" // .md-highlight_off
+          el.title = "No"
           break
       }
     })
@@ -502,6 +514,7 @@ function cleanupStates(obj) {
 
 
 function setFieldsReadOnly(queryId) {
+  console.log("queryId:", queryId)
   byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => el.setAttribute("disabled", "disabled"))
   byQuery(`#${queryId} textarea`).forEach(el => el.style.removeProperty("background-color"))
 }
@@ -515,17 +528,17 @@ function setFieldsEditable(queryId) {
 
 function setEditable(el) {
   setFieldsEditable(el._anchor)
-  el.popup.saveOrEdit = "Save"
+  el.state.popup.saveOrEdit = "Save"
 }
 
 
 function setReadOnly(el) {
   setFieldsReadOnly(el._anchor)
-  el.popup.saveOrEdit = "Edit"
+  el.state.popup.saveOrEdit = "Edit"
 }
 
 
-function getPulldownList(name, cb) {
+function fetchPulldownData(name, cb) {
   callGet(name + "?limit=999&isdisabled=N", (stateJson) => {
     let idArr = [-1]
     let nameArr = [""]
@@ -563,6 +576,89 @@ function changeTab(name, state, tab) {
 // }
 
 
+function initSorting(app, cb) {
+  console.log("initSorting: app:", app)
+
+  // gathering the columns list for sorting
+  for (const n of byQuery(`#el-${app._name} .sort-anchor`)[0].children) {
+    app.sorting.cols.push(n.classList[0])
+  }
+
+  app.offset = 0
+  if (app._name == "company")
+    app.company.list = []
+  else
+    app.state.list = []
+
+  // setting temp columns' indexes
+  let colIdx = 0
+  // TODO: to remove these temp indexes later
+  byQuery(`#app-${app._name} th`).forEach(c => {
+    if (!isUndef(c.childNodes[1]) && c.childNodes[1].classList[0] == "sorting")
+      doElemHidden(c.childNodes[1], colIdx)
+    colIdx += 1
+  })
+
+  // setting columns' handlers
+  byQuery(`#app-${app._name} th`).forEach(c => {
+    if (!isUndef(c.childNodes[1]) && c.childNodes[1].classList[0] == "sorting")
+      c.addEventListener('click', function (evtEl, _evtPath) {
+        let idx = evtEl.target.parentElement.classList[1]
+        console.log("evtEl.target:", evtEl.target, "idx:", idx)
+        if (!isUndef(idx)) {
+          app.offset = 0
+          // // TODO: app._anchor_state?
+          // if (app._name == "company")
+          //   app.company.list = []
+          // else
+          app.state.list = []
+          app.sorting.ordby = app.sorting.cols[idx]
+          app.sorting.orddir = !app.sorting.orddir
+          // console.log('sort clicked:', idx, app.sorting.ordby, app.sorting.orddir)
+
+          // sorting icons management
+          byQuery(`#app-${app._name} thead i`).forEach(c => { c.classList.remove(c.classList[1]) })
+          let cnt = 0
+          byQuery(`#app-${app._name} thead i`).forEach(c => {
+            if (cnt == idx) {
+              if (app.sorting.orddir)
+                byQuery(`#app-${app._name} thead i`)[idx].classList.add("md-arrow_upward")
+              else
+                byQuery(`#app-${app._name} thead i`)[idx].classList.add("md-arrow_downward")
+            }
+            else
+              c.classList.add("md-swap_vert")
+            cnt += 1
+          })
+
+          // fetching data according to sorting preference
+          fetchData(app, cb)
+        }
+        evtEl.preventDefault()
+      })
+  })
+}
+
+
+function fetchData(app, cb) {
+  console.log("fetchData:", app, cb)
+  callGet(`${app._name}?offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
+    // console.log("app:", app, "data:", stateJson.data)
+    // // TODO: app._anchor_state?
+    // if (app._name == "company") {
+    //   app.company.list = app.company.list.concat(stateJson.data)
+    //   // console.log("state:", app.company.list, "offset:", app.offset)
+    // }
+    // else {
+    app.state.list = app.state.list.concat(stateJson.data)
+    //   // console.log("state:", app.state.list, "offset:", app.offset)
+    // }
+
+    cb && cb()
+  })
+}
+
+
 // // overwriting system console.log for sending browser logs to the server
 // var orgLog = window.console.log
 // window.console.log = function () {
@@ -585,15 +681,15 @@ function changeTab(name, state, tab) {
 
 
 window.viui = {
-  init, reload, registerApp,
+  initFeatures, reload, registerApp,
   byId, byName, byCls, byQuery, isUndef, callGet, callPost, callPut, callPostUnsecure, callDelete,
   initOnPopupOpen, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
   cleanChilds, getFormattedDate, toastMsg, toastMandatoryField, verifiedMandatoryFields,
   setActiveTab, getPosition, notImpl, getStackTrace, uploadFile, load, saveDefault,
-  save, remove, isEmptyObj, setTabActive, getTs, getTs2, delay,
+  save, remove, isObjEmpty, setTabActive, getTs, getTs2, delay,
   postinitTitles, postinitPictures, postinitStatuses,
   onDragStart, onDragOver, onDrop, onDragEnd,
-  cleanupStates, setFieldsReadOnly, setFieldsEditable, setEditable, setReadOnly, getPulldownList,
-  enableButton, disableButton, changeTab
+  cleanupStates, setFieldsReadOnly, setFieldsEditable, setEditable, setReadOnly, fetchPulldownData,
+  enableButton, disableButton, changeTab, initSorting, fetchData
 }
