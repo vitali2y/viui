@@ -1,13 +1,14 @@
 //
-// vijs
+// viui.js
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
 
+
 let appList = []
 let featureList = {}
 let appActive
-
+let defaultOffset = 20
 
 function initFeatures(featureArr) {
   featureList = featureArr
@@ -439,7 +440,6 @@ function postinitStatuses(elName, tabName) {
   // TODO: to preliminary pass innerHTML and title sets via init()
   byQuery(`#app-${elName} .content_${tabName} .status-tooltip`)
     .forEach(function (el) {
-      console.log("innerText:", el.innerText, elName)
       switch (el.innerText) {
         // NOTE: innerHTML codes @ MaterialIcons.css
         case "1":
@@ -584,11 +584,7 @@ function initSorting(app, cb) {
     app.sorting.cols.push(n.classList[0])
   }
 
-  app.offset = 0
-  if (app._name == "company")
-    app.company.list = []
-  else
-    app.state.list = []
+  app.state.list = []
 
   // setting temp columns' indexes
   let colIdx = 0
@@ -607,14 +603,11 @@ function initSorting(app, cb) {
         console.log("evtEl.target:", evtEl.target, "idx:", idx)
         if (!isUndef(idx)) {
           app.offset = 0
-          // // TODO: app._anchor_state?
-          // if (app._name == "company")
-          //   app.company.list = []
-          // else
+          // TODO: app._anchor_state?
           app.state.list = []
           app.sorting.ordby = app.sorting.cols[idx]
           app.sorting.orddir = !app.sorting.orddir
-          // console.log('sort clicked:', idx, app.sorting.ordby, app.sorting.orddir)
+          console.log('sort clicked:', idx, app.sorting.ordby, app.sorting.orddir)
 
           // sorting icons management
           byQuery(`#app-${app._name} thead i`).forEach(c => { c.classList.remove(c.classList[1]) })
@@ -635,27 +628,38 @@ function initSorting(app, cb) {
           fetchData(app, cb)
         }
         evtEl.preventDefault()
+        return
       })
   })
+  // fetching data according to sorting preference
+  app.limit = defaultOffset
+  fetchData(app, cb)
 }
 
 
 function fetchData(app, cb) {
   console.log("fetchData:", app, cb)
   callGet(`${app._name}?offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
-    // console.log("app:", app, "data:", stateJson.data)
-    // // TODO: app._anchor_state?
-    // if (app._name == "company") {
-    //   app.company.list = app.company.list.concat(stateJson.data)
-    //   // console.log("state:", app.company.list, "offset:", app.offset)
-    // }
-    // else {
+    console.log("fetchData: app:", app, "data:", stateJson.data)
     app.state.list = app.state.list.concat(stateJson.data)
-    //   // console.log("state:", app.state.list, "offset:", app.offset)
-    // }
 
     cb && cb()
   })
+}
+
+
+function scrollData(app, cb) {
+  let scroll = byQuery(`#${app._anchor} .scroll-infinite`)[0]
+  scroll
+    .addEventListener('scroll', function () {
+      // console.log(scroll.scrollTop + scroll.clientHeight, ">=", scroll.scrollHeight, "?", scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight, scroll)
+      if (scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight) {
+        app.offset += defaultOffset
+        fetchData((app), () => {
+          cb && cb()
+        })
+      }
+    })
 }
 
 
@@ -681,7 +685,7 @@ function fetchData(app, cb) {
 
 
 window.viui = {
-  initFeatures, reload, registerApp,
+  defaultOffset, initFeatures, reload, registerApp,
   byId, byName, byCls, byQuery, isUndef, callGet, callPost, callPut, callPostUnsecure, callDelete,
   initOnPopupOpen, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
@@ -691,5 +695,5 @@ window.viui = {
   postinitTitles, postinitPictures, postinitStatuses,
   onDragStart, onDragOver, onDrop, onDragEnd,
   cleanupStates, setFieldsReadOnly, setFieldsEditable, setEditable, setReadOnly, fetchPulldownData,
-  enableButton, disableButton, changeTab, initSorting, fetchData
+  enableButton, disableButton, changeTab, initSorting, fetchData, scrollData
 }
