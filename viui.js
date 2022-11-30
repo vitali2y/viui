@@ -26,20 +26,20 @@ function registerApp(app) {
 
 
 // alias
-function byId(id) {
-  return document.getElementById(id)
+function byId(id, ptr = document) {
+  return ptr.getElementById(id)
 }
 
 
 // alias
-function byName(id) {
-  return document.getElementsByName(id)
+function byName(id, ptr = document) {
+  return ptr.getElementsByName(id)
 }
 
 
 // alias
-function byCls(id) {
-  return document.getElementsByClassName(id)
+function byCls(id, ptr = document) {
+  return ptr.getElementsByClassName(id)
 }
 
 
@@ -184,12 +184,14 @@ function doElemActiveById(id, attr) {
 }
 
 
-function doAppActive(app, cb) {
+function doAppActive(app = null, cb) {
   for (var a = 0; a < appList.length; a++) {
     doAppHidden(appList[a])
   }
-  appActive = app
-  doElemActiveById("app-" + app)
+  if (app != null) {
+    appActive = app
+    doElemActiveById("app-" + app)
+  }
 
   // applying callback if present
   cb && cb()
@@ -242,9 +244,19 @@ function toastMsg(msg, type) {
 
 function toastMandatoryField(reqField) {
   toastMsg("Please fill/select mandatory field(s)!", "error")
-  reqField.classList.add("alert-field")
+  {
+    if (reqField.type == "select-one")
+      reqField.style.setProperty("background-color", "#e85600")
+    else
+      reqField.classList.add("alert-field")
+  }
   function toastOff() {
-    reqField.classList.remove("alert-field")
+    {
+      if (reqField.type == "select-one")
+        reqField.style.setProperty("background-color", "#ededff")  // set default
+      else
+        reqField.classList.remove("alert-field")
+    }
   }
   setTimeout(toastOff, 3000)
 }
@@ -256,9 +268,8 @@ function verifiedMandatoryFields(app, contentName, setFieldsToCheck) {
   console.log("verifiedMandatoryFields:", app, contentName, setFieldsToCheck)
   var isVerified = true
   var fieldsToCheck = byQuery(`#el-${app} ${contentName} .req-field`)
-  console.log("fieldsToCheck:", fieldsToCheck)
   for (var i = 0; i < fieldsToCheck.length; i += 1) {
-    if ((fieldsToCheck[i].value == "") || (fieldsToCheck[i].value == -1)) {
+    if ((fieldsToCheck[i].value == "") || (fieldsToCheck[i].value == "-1")) {
       toastMandatoryField(fieldsToCheck[i])
       isVerified = false
     }
@@ -508,8 +519,13 @@ function onDragEnd(event) {
 }
 
 
-function cleanupStates(obj) {
-  for (var k in obj) obj[k] = ""
+function cleanupStates(obj, arrExc = []) {
+  for (var k in obj) {
+    var found = arrExc.find(el => el == k)
+    if (isUndef(found)) {
+      obj[k] = ""
+    }
+  }
 }
 
 
@@ -528,21 +544,23 @@ function setFieldsEditable(queryId) {
 
 function setEditable(el) {
   setFieldsEditable(el._anchor)
+  // TODO: as param or cb
   el.state.popup.saveOrEdit = "Save"
 }
 
 
 function setReadOnly(el) {
   setFieldsReadOnly(el._anchor)
+  // TODO: as param or cb
   el.state.popup.saveOrEdit = "Edit"
 }
 
 
-function fetchPulldownData(name, cb) {
-  callGet(name + "?limit=999&isdisabled=N", (stateJson) => {
+function fetchPulldownData(name, cb, fn = function (i) { return i.name }) {
+  callGet(name + "?short=1&ordby=name&orddir=ASC&limit=999&isdisabled=N", (stateJson) => {
     let idArr = [-1]
     let nameArr = [""]
-    stateJson.data.forEach(i => { idArr.push(i.id); nameArr.push(i.name) })
+    stateJson.data.forEach(i => { idArr.push(i.id); nameArr.push(fn(i)) })
     cb({ id: idArr, name: nameArr })
   })
 }
@@ -600,14 +618,12 @@ function initSorting(app, cb) {
     if (!isUndef(c.childNodes[1]) && c.childNodes[1].classList[0] == "sorting")
       c.addEventListener('click', function (evtEl, _evtPath) {
         let idx = evtEl.target.parentElement.classList[1]
-        console.log("evtEl.target:", evtEl.target, "idx:", idx)
         if (!isUndef(idx)) {
           app.offset = 0
           // TODO: app._anchor_state?
           app.state.list = []
           app.sorting.ordby = app.sorting.cols[idx]
           app.sorting.orddir = !app.sorting.orddir
-          console.log('sort clicked:', idx, app.sorting.ordby, app.sorting.orddir)
 
           // sorting icons management
           byQuery(`#app-${app._name} thead i`).forEach(c => { c.classList.remove(c.classList[1]) })
@@ -639,7 +655,7 @@ function initSorting(app, cb) {
 
 function fetchData(app, cb) {
   console.log("fetchData:", app, cb)
-  callGet(`${app._name}?offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
+  callGet(`${app._name}?limit=${app.limit}&offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
     console.log("fetchData: app:", app, "data:", stateJson.data)
     app.state.list = app.state.list.concat(stateJson.data)
 
@@ -652,7 +668,6 @@ function scrollData(app, cb) {
   let scroll = byQuery(`#${app._anchor} .scroll-infinite`)[0]
   scroll
     .addEventListener('scroll', function () {
-      // console.log(scroll.scrollTop + scroll.clientHeight, ">=", scroll.scrollHeight, "?", scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight, scroll)
       if (scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight) {
         app.offset += defaultOffset
         fetchData((app), () => {
@@ -660,6 +675,43 @@ function scrollData(app, cb) {
         })
       }
     })
+}
+
+
+function getIcon(name, title, body) {
+  let icn = document.createElement("i")
+  icn.classList.add("material-icons")
+  icn.classList.add(name)
+  icn.title = title
+  icn.innerHTML = body
+  return icn
+}
+
+
+// Presets some predefined value in dropdown list by "value" param
+// TODO: better name
+function setDropdownSelectedByValue(query, val) {
+  byQuery(query)[0].querySelectorAll(`[value="${val}"]`)[0].selected = true
+}
+
+
+// Presets some predefined value in dropdown list by tag's content
+// TODO: better name
+function setDropdownSelectedByContent(query, val) {
+  [...byQuery(query)[0].querySelectorAll('[class="name"]')]
+    .filter(e => e.innerText == val)[0].selected = true
+}
+
+
+// Clears dropdown's selected option
+// TODO: better name
+function clearDropdownSelected(query) {
+  console.log("clearDropdownSelected:", query)
+  if (byQuery(query).length > 0) {
+    let q = byQuery(query)[0].childNodes[0]
+    if (q.selectedIndex > 0)
+      q.selectedIndex = 0
+  }
 }
 
 
@@ -695,5 +747,6 @@ window.viui = {
   postinitTitles, postinitPictures, postinitStatuses,
   onDragStart, onDragOver, onDrop, onDragEnd,
   cleanupStates, setFieldsReadOnly, setFieldsEditable, setEditable, setReadOnly, fetchPulldownData,
-  enableButton, disableButton, changeTab, initSorting, fetchData, scrollData
+  enableButton, disableButton, changeTab, initSorting, fetchData, scrollData, getIcon,
+  setDropdownSelectedByValue, setDropdownSelectedByContent, clearDropdownSelected
 }
