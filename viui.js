@@ -8,7 +8,7 @@
 let appList = []
 let featureList = {}
 let appActive
-let defaultOffset = 20
+
 
 function initFeatures(featureArr) {
   featureList = featureArr
@@ -61,17 +61,21 @@ function _callBackend(app, method, params, isSecureCall, cb) {
     p["body"] = JSON.stringify(params)
     hd.append('Content-Type', 'application/json')
   }
-  if (isSecureCall && localStorage.getItem('ccs-token') != null) {
+  if (isSecureCall) {
     hd.append('Authorization', localStorage.getItem('ccs-token'))
     app = `${window.API_VER}/${app}`
   }
   p.headers = hd
   featureList["spin-on"] && featureList["spin-on"]()
   fetch(app, p)
-    .then(resp => resp.json())
+    .then(resp => {
+      if (resp.status != 200)
+        cb && cb([], resp.status)
+      return resp.json()
+    })
     .then(fetched => {
       featureList["spin-on"] && featureList["spin-off"]()
-      cb && cb(fetched)
+      cb && cb(fetched, 0)
     })
     .catch(err => console.log("oops, error:", err))
 }
@@ -269,7 +273,7 @@ function verifiedMandatoryFields(app, contentName, setFieldsToCheck) {
   var isVerified = true
   var fieldsToCheck = byQuery(`#el-${app} ${contentName} .req-field`)
   for (var i = 0; i < fieldsToCheck.length; i += 1) {
-    if ((fieldsToCheck[i].value == "") || (fieldsToCheck[i].value == "-1")) {
+    if ((fieldsToCheck[i].value == "") || (fieldsToCheck[i].value == "0")) {
       toastMandatoryField(fieldsToCheck[i])
       isVerified = false
     }
@@ -388,7 +392,6 @@ function isObjEmpty(obj) {
 
 
 function setTabActive(app, tabs, tab) {
-  console.log("setTabActive:", app, tabs, tab)
   Object.keys(tabs).forEach(function (i) { byQuery(`#el-${app} .${tabs[i]}`)[0].parentNode.classList.remove("active") })
   byQuery(`#el-${app} .${tab}`)[0].parentNode.classList.add("active")
   byQuery(`#el-${app} .${tab}`)[0].parentNode.classList.remove("d-none")
@@ -435,11 +438,11 @@ function postinitPictures(elName, tabName) {
   byQuery(`#el-${elName} .content_${tabName} .picture-tooltip`)
     .forEach(function (el) {
       if (el.innerText === "N") {
-        el.innerHTML = "&#xea8e;"
+        el.innerHTML = "&#xe31b;"
         el.title = "Absent"
       }
       else {
-        el.innerHTML = "&#xe31b;"
+        el.innerHTML = "&#xea8e;"
         el.title = "Present"
       }
     })
@@ -519,18 +522,94 @@ function onDragEnd(event) {
 }
 
 
-function cleanupStates(obj, arrExc = []) {
-  for (var k in obj) {
+function preInitStates(maps, tab) {
+  console.log("preInitStates:", maps, tab)
+  var arr = []
+  Object.keys(maps.popup[1]).forEach(function (i) {
+    if (i == tab) {
+      console.log("preInitStates:", i)
+      Object.keys(maps.popup[1][i][1]).forEach(function (j) { arr.push(j) })
+    }
+  })
+  return arr
+}
+
+
+function preInitStates2(maps, states, arrExc = []) {
+  console.log("preInitStates2:", maps, states, arrExc)
+  var arr = []
+  Object.keys(maps).forEach(function (j) { arr.push(j) })
+
+  for (var k in states) {
+    var found = arrExc.find(el => el == k)
+    if (isUndef(found))
+      // TODO: all fields which end with "_id" ("id"?) to init to 0?
+      states[k] = ""
+    else
+      states[k] = 0
+  }
+  console.log("preInitStates2: states:", states)
+  return states
+}
+
+
+// TODO:
+function cleanupStates(states, arrExc = []) {
+  console.log("cleanupStates:", states, arrExc)
+  for (var k in states) {
+    var found = arrExc.find(el => el == k)
+    if (isUndef(found))
+      states[k] = ""
+    else
+      states[k] = 0
+  }
+}
+
+
+// TODO:
+function cleanupStates2(maps, states, arrExc = []) {
+  console.log("cleanupStates2:", maps, states, arrExc)
+  var arr = []
+  Object.keys(maps).forEach(function (j) { arr.push(j) })
+  console.log("arr:", arr)
+
+  for (var k in arr) {
+    var found = arrExc.find(el => el == k)
+    if (isUndef(found))
+      // TODO: all fields which end with "_id" ("id"?) to init to 0?
+      states[k] = ""
+    else
+      states[k] = 0
+  }
+  console.log("cleanupStates2: states:", states)
+  return states
+}
+
+
+function initStates(states, inits, arrExc = []) {
+  for (var k in states) {
+    var found = arrExc.find(el => el == k)
+    if (isUndef(found))
+      states[k] = inits[k]
+    else
+      states[k] = 0
+  }
+}
+
+
+function trimStates(states, arrExc = []) {
+  for (var k in states) {
     var found = arrExc.find(el => el == k)
     if (isUndef(found)) {
-      obj[k] = ""
+      if (states[k].length > 0)
+        states[k] = states[k].trim()
     }
   }
 }
 
 
 function setFieldsReadOnly(queryId) {
-  console.log("queryId:", queryId)
+  // TODO: spectre.css:969 for select
   byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => el.setAttribute("disabled", "disabled"))
   byQuery(`#${queryId} textarea`).forEach(el => el.style.removeProperty("background-color"))
 }
@@ -558,7 +637,7 @@ function setReadOnly(el) {
 
 function fetchPulldownData(name, cb, fn = function (i) { return i.name }) {
   callGet(name + "?short=1&ordby=name&orddir=ASC&limit=999&isdisabled=N", (stateJson) => {
-    let idArr = [-1]
+    let idArr = [0]
     let nameArr = [""]
     stateJson.data.forEach(i => { idArr.push(i.id); nameArr.push(fn(i)) })
     cb({ id: idArr, name: nameArr })
@@ -567,24 +646,51 @@ function fetchPulldownData(name, cb, fn = function (i) { return i.name }) {
 
 
 function enableButton(el, btnName) {
-  console.log("enableButton:", el, btnName)
   doElemActive(byQuery(`#el-${el} button.${btnName}`)[0], "disabled")
 }
 
 
 function disableButton(el, btnName) {
-  console.log("disableButton:", el, btnName)
   doElemHidden(byQuery(`#el-${el} button.${btnName}`)[0], "disabled")
 }
 
 
-function changeTab(name, state, tab) {
-  console.log("changeTab:", name, state, tab)
-  let q = Object.keys(state)
-  let tabsAll = []
+function unhideButton(el, btnName) {
+  doElemActive(byQuery(`#el-${el} button.${btnName}`)[0])
+}
+
+
+function hideButton(el, btnName) {
+  doElemHidden(byQuery(`#el-${el} button.${btnName}`)[0])
+}
+
+
+// TODO: "tab_" prefix is passed in activeTab, when it's not in activeTabs in initStaticTabs()
+function changeTab(app, statePopups, activeTab) {
+  var q = Object.keys(statePopups)
+  var tabsAll = []
   Object.keys(q).forEach(function (i) { if (q[i].startsWith("tab_")) tabsAll.push(q[i]) })
-  setTabActive(name, tabsAll, tab)
-  return tab
+  setTabActive(app, tabsAll, activeTab)
+  return activeTab
+}
+
+
+function initStaticTabs(app, statePopups, activeTabs) {
+  // hide all tabs, and ...
+  var q = Object.keys(statePopups)
+  var tabs = []
+  Object.keys(q).forEach(function (i) { if (q[i].startsWith("tab_")) tabs.push(q[i]) })
+  Object.keys(tabs).forEach(function (i) {
+    byQuery(`#el-${app} .${tabs[i]}`)[0]
+      .parentNode.classList.add("d-none")
+  })
+
+  // ... open required tabs only
+  tabs = activeTabs.map(i => 'tab_' + i)
+  Object.keys(tabs).forEach(function (i) {
+    byQuery(`#el-${app} .${tabs[i]}`)[0]
+      .parentNode.classList.remove("d-none")
+  })
 }
 
 
@@ -595,9 +701,8 @@ function changeTab(name, state, tab) {
 
 
 function initSorting(app, cb) {
-  console.log("initSorting: app:", app)
-
   // gathering the columns list for sorting
+  app.sorting.cols = []
   for (const n of byQuery(`#el-${app._name} .sort-anchor`)[0].children) {
     app.sorting.cols.push(n.classList[0])
   }
@@ -647,19 +752,28 @@ function initSorting(app, cb) {
         return
       })
   })
+
   // fetching data according to sorting preference
-  app.limit = defaultOffset
+  app.limit = featureList["limit"]
   fetchData(app, cb)
 }
 
 
 function fetchData(app, cb) {
-  console.log("fetchData:", app, cb)
-  callGet(`${app._name}?limit=${app.limit}&offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
-    console.log("fetchData: app:", app, "data:", stateJson.data)
-    app.state.list = app.state.list.concat(stateJson.data)
-
-    cb && cb()
+  var url
+  if (isUndef(app._url))
+    url = app._name + "?"
+  else
+    url = app._url
+  callGet(`${url}limit=${app.limit}&offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
+    // console.log("fetchData: app:", app, "data:", stateJson.data)
+    // TODO: to chk stateJson.code
+    if (isUndef(app._url)) {
+      app.state.list = app.state.list.concat(stateJson.data)
+      cb && cb()
+    }
+    else
+      cb && cb(stateJson.data)
   })
 }
 
@@ -669,10 +783,8 @@ function scrollData(app, cb) {
   scroll
     .addEventListener('scroll', function () {
       if (scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight) {
-        app.offset += defaultOffset
-        fetchData((app), () => {
-          cb && cb()
-        })
+        app.offset += featureList["offset"]
+        cb && cb()
       }
     })
 }
@@ -698,20 +810,36 @@ function setDropdownSelectedByValue(query, val) {
 // Presets some predefined value in dropdown list by tag's content
 // TODO: better name
 function setDropdownSelectedByContent(query, val) {
-  [...byQuery(query)[0].querySelectorAll('[class="name"]')]
-    .filter(e => e.innerText == val)[0].selected = true
+  selected = false
+  byQuery(query)[0].querySelectorAll('[class="name"]').forEach(i => {
+    if (i.value == val) {
+      console.log("selected:", i)
+      i.selected = true
+      selected = true
+    }
+  })
+}
+
+
+function getDropdownSelectedByValue(query, val) {
+  return byQuery(query)[0].querySelectorAll(`[value="${val}"]`)[0].innerText
 }
 
 
 // Clears dropdown's selected option
 // TODO: better name
+// TODO: deprecated?
 function clearDropdownSelected(query) {
-  console.log("clearDropdownSelected:", query)
   if (byQuery(query).length > 0) {
     let q = byQuery(query)[0].childNodes[0]
-    if (q.selectedIndex > 0)
+    if (q && q.selectedIndex > 0)
       q.selectedIndex = 0
   }
+}
+
+
+function applyPermissionGroup(group, file = 2) {
+  window.document.styleSheets[file].insertRule(`.perm${group} { display: none; }`)
 }
 
 
@@ -737,7 +865,7 @@ function clearDropdownSelected(query) {
 
 
 window.viui = {
-  defaultOffset, initFeatures, reload, registerApp,
+  initFeatures, reload, registerApp,
   byId, byName, byCls, byQuery, isUndef, callGet, callPost, callPut, callPostUnsecure, callDelete,
   initOnPopupOpen, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
@@ -745,8 +873,9 @@ window.viui = {
   setActiveTab, getPosition, notImpl, getStackTrace, uploadFile, load, saveDefault,
   save, remove, isObjEmpty, setTabActive, getTs, getTs2, delay,
   postinitTitles, postinitPictures, postinitStatuses,
-  onDragStart, onDragOver, onDrop, onDragEnd,
-  cleanupStates, setFieldsReadOnly, setFieldsEditable, setEditable, setReadOnly, fetchPulldownData,
-  enableButton, disableButton, changeTab, initSorting, fetchData, scrollData, getIcon,
-  setDropdownSelectedByValue, setDropdownSelectedByContent, clearDropdownSelected
+  onDragStart, onDragOver, onDrop, onDragEnd, preInitStates, preInitStates2, cleanupStates,
+  initStates, trimStates, setFieldsReadOnly, setFieldsEditable,
+  setEditable, setReadOnly, fetchPulldownData, enableButton, disableButton, unhideButton, hideButton,
+  changeTab, initStaticTabs, initSorting, fetchData, scrollData, getIcon, setDropdownSelectedByValue,
+  setDropdownSelectedByContent, getDropdownSelectedByValue, clearDropdownSelected, applyPermissionGroup
 }
