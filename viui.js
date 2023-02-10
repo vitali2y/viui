@@ -230,12 +230,9 @@ function getFormattedDate(ts) {
 }
 
 
-function toastMsg(msg, type) {
+function toastMsg(msg, typeMsg = "success") {
   let t = byId("toast")
   t.innerHTML = msg
-  let typeMsg = "success"
-  if (!isUndef(type))
-    typeMsg = type
   t.classList.add('toast-' + typeMsg)
   t.classList.remove('d-none')
   function toastOff() {
@@ -554,12 +551,12 @@ function preInitStates2(maps, states, arrExc = []) {
 
 
 // TODO:
-function cleanupStates(states, arrExc = []) {
+function cleanupStates(states, arrExc = [], initVal = "") {
   console.log("cleanupStates:", states, arrExc)
   for (var k in states) {
     var found = arrExc.find(el => el == k)
     if (isUndef(found))
-      states[k] = ""
+      states[k] = initVal
     else
       states[k] = 0
   }
@@ -589,8 +586,12 @@ function cleanupStates2(maps, states, arrExc = []) {
 function initStates(states, inits, arrExc = []) {
   for (var k in states) {
     var found = arrExc.find(el => el == k)
-    if (isUndef(found))
-      states[k] = inits[k]
+    if (isUndef(found)) {
+      if ((inits[k] == window.EMPTY) || (inits[k] == null))
+        states[k] = ""
+      else
+        states[k] = inits[k]
+    }
     else
       states[k] = 0
   }
@@ -838,6 +839,21 @@ function clearDropdownSelected(query) {
 }
 
 
+function supportDropdownSelected(el, dropdownId, query, prevVal, val) {
+  console.log("supportDropdownSelected:", el, dropdownId, query, prevVal, val)
+  if (prevVal === null)
+    el.addEventListener('change', function (evtEl, _evtPath) {
+      evtEl.preventDefault()
+      dropdownId = parseInt(evtEl.target.options[evtEl.target.selectedIndex].value)
+    })
+  try {
+    setDropdownSelectedByValue(query, val)
+  } catch (err) {
+    console.log("oops, supportDropdownSelected:", err, query, val)
+  }
+}
+
+
 function applyPermissionGroup(group, file = 2) {
   window.document.styleSheets[file].insertRule(`.perm${group} { display: none; }`)
 }
@@ -877,5 +893,6 @@ window.viui = {
   initStates, trimStates, setFieldsReadOnly, setFieldsEditable,
   setEditable, setReadOnly, fetchPulldownData, enableButton, disableButton, unhideButton, hideButton,
   changeTab, initStaticTabs, initSorting, fetchData, scrollData, getIcon, setDropdownSelectedByValue,
-  setDropdownSelectedByContent, getDropdownSelectedByValue, clearDropdownSelected, applyPermissionGroup
+  setDropdownSelectedByContent, getDropdownSelectedByValue, clearDropdownSelected, supportDropdownSelected,
+  applyPermissionGroup
 }
