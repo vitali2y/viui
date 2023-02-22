@@ -153,9 +153,7 @@ function doAppAttrActive(app, attr) {
 }
 
 
-function doElemHidden(el, attr) {
-  if (attr == null)
-    attr = "d-none"
+function doElemHidden(el, attr = "d-none") {
   el.classList.add(attr)
 }
 
@@ -176,9 +174,7 @@ function doAppHidden(app) {
 }
 
 
-function doElemActive(el, attr) {
-  if (attr == null)
-    attr = "d-none"
+function doElemActive(el, attr = "d-none") {
   el.classList.remove(attr)
 }
 
@@ -196,6 +192,9 @@ function doAppActive(app = null, cb) {
     appActive = app
     doElemActiveById("app-" + app)
   }
+
+  if (featureList["app-active"])
+    featureList["app-active"]()
 
   // applying callback if present
   cb && cb()
@@ -230,27 +229,19 @@ function getFormattedDate(ts) {
 }
 
 
-function toastMsg(msg, typeMsg = "success") {
-  let t = byId("toast")
-  t.innerHTML = msg
-  t.classList.add('toast-' + typeMsg)
-  t.classList.remove('d-none')
-  function toastOff() {
-    t.classList.add('d-none')
-    t.classList.remove('toast-' + typeMsg)
-  }
-  setTimeout(toastOff, 3000)
+function toastMsg(msg, typeMsg = "success", timeOut) {
+  if (featureList["toast"])
+    featureList["toast"](msg, typeMsg, timeOut)
 }
 
 
 function toastMandatoryField(reqField) {
   toastMsg("Please fill/select mandatory field(s)!", "error")
-  {
-    if (reqField.type == "select-one")
-      reqField.style.setProperty("background-color", "#e85600")
-    else
-      reqField.classList.add("alert-field")
-  }
+  if (reqField.type == "select-one")
+    reqField.style.setProperty("background-color", "#e85600")
+  else
+    reqField.classList.add("alert-field")
+
   function toastOff() {
     {
       if (reqField.type == "select-one")
@@ -259,14 +250,14 @@ function toastMandatoryField(reqField) {
         reqField.classList.remove("alert-field")
     }
   }
-  setTimeout(toastOff, 3000)
+
+  setTimeout(toastOff, 4000)
 }
 
 
 function verifiedMandatoryFields(app, contentName, setFieldsToCheck) {
   // TODO: to do better ".req-label + .req-field" functionality
   // TODO: chk all ".contactemail" (e. g. ".content_tab_followup", etc) when manually cleared
-  console.log("verifiedMandatoryFields:", app, contentName, setFieldsToCheck)
   var isVerified = true
   var fieldsToCheck = byQuery(`#el-${app} ${contentName} .req-field`)
   for (var i = 0; i < fieldsToCheck.length; i += 1) {
@@ -494,7 +485,7 @@ function onDragStart(event) {
 
 
 function onDragOver(event) {
-  event.preventDefault()
+  event.stopPropagation()
 }
 
 
@@ -510,7 +501,7 @@ function onDrop(event) {
       dropzone.appendChild(dndElement)
     }
   })
-  event.preventDefault()
+  event.stopPropagation()
 }
 
 
@@ -520,7 +511,6 @@ function onDragEnd(event) {
 
 
 function preInitStates(maps, tab) {
-  console.log("preInitStates:", maps, tab)
   var arr = []
   Object.keys(maps.popup[1]).forEach(function (i) {
     if (i == tab) {
@@ -533,7 +523,6 @@ function preInitStates(maps, tab) {
 
 
 function preInitStates2(maps, states, arrExc = []) {
-  console.log("preInitStates2:", maps, states, arrExc)
   var arr = []
   Object.keys(maps).forEach(function (j) { arr.push(j) })
 
@@ -552,7 +541,6 @@ function preInitStates2(maps, states, arrExc = []) {
 
 // TODO:
 function cleanupStates(states, arrExc = [], initVal = "") {
-  console.log("cleanupStates:", states, arrExc)
   for (var k in states) {
     var found = arrExc.find(el => el == k)
     if (isUndef(found))
@@ -565,7 +553,6 @@ function cleanupStates(states, arrExc = [], initVal = "") {
 
 // TODO:
 function cleanupStates2(maps, states, arrExc = []) {
-  console.log("cleanupStates2:", maps, states, arrExc)
   var arr = []
   Object.keys(maps).forEach(function (j) { arr.push(j) })
   console.log("arr:", arr)
@@ -749,7 +736,7 @@ function initSorting(app, cb) {
           // fetching data according to sorting preference
           fetchData(app, cb)
         }
-        evtEl.preventDefault()
+        evtEl.stopPropagation()
         return
       })
   })
@@ -767,7 +754,6 @@ function fetchData(app, cb) {
   else
     url = app._url
   callGet(`${url}limit=${app.limit}&offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
-    // console.log("fetchData: app:", app, "data:", stateJson.data)
     // TODO: to chk stateJson.code
     if (isUndef(app._url)) {
       app.state.list = app.state.list.concat(stateJson.data)
@@ -840,14 +826,13 @@ function clearDropdownSelected(query) {
 
 
 function supportDropdownSelected(el, dropdownId, query, prevVal, val) {
-  console.log("supportDropdownSelected:", el, dropdownId, query, prevVal, val)
   if (prevVal === null)
     el.addEventListener('change', function (evtEl, _evtPath) {
-      evtEl.preventDefault()
+      evtEl.stopPropagation()
       dropdownId = parseInt(evtEl.target.options[evtEl.target.selectedIndex].value)
     })
   try {
-    setDropdownSelectedByValue(query, val)
+    setDropdownSelectedByContent(query, val)
   } catch (err) {
     console.log("oops, supportDropdownSelected:", err, query, val)
   }
@@ -885,7 +870,8 @@ window.viui = {
   byId, byName, byCls, byQuery, isUndef, callGet, callPost, callPut, callPostUnsecure, callDelete,
   initOnPopupOpen, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
-  cleanChilds, getFormattedDate, toastMsg, toastMandatoryField, verifiedMandatoryFields,
+  cleanChilds, getFormattedDate, toastMsg, toastMandatoryField,
+  verifiedMandatoryFields,
   setActiveTab, getPosition, notImpl, getStackTrace, uploadFile, load, saveDefault,
   save, remove, isObjEmpty, setTabActive, getTs, getTs2, delay,
   postinitTitles, postinitPictures, postinitStatuses,
