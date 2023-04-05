@@ -3,6 +3,8 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
+// v0.12.0
+//
 
 
 let appList = []
@@ -59,6 +61,7 @@ function _callBackend(app, method, params, isSecureCall, cb) {
   let p = { method: method }
   if (!isUndef(params)) {
     p["body"] = JSON.stringify(params)
+    // p["body"] = params
     hd.append('Content-Type', 'application/json')
   }
   if (isSecureCall) {
@@ -91,13 +94,13 @@ function callPost(app, params, cb) {
 }
 
 
-function callPut(app, params, cb) {
-  _callBackend(app, "PUT", params, true, cb)
+function callPostUnsecure(app, params, cb) {
+  _callBackend(app, "POST", params, false, cb)
 }
 
 
-function callPostUnsecure(app, params, cb) {
-  _callBackend(app, "POST", params, false, cb)
+function callPut(app, params, cb) {
+  _callBackend(app, "PUT", params, true, cb)
 }
 
 
@@ -124,8 +127,7 @@ function openPopup(id, status = 'active') {
 
 
 function closePopup(id, status = 'active') {
-  var i = `el-${id}`
-  byId(i).classList.remove(status)
+  doElemActive(byId(`el-${id}`), status)
   // TODO: redo (https://gist.github.com/amysimmons/3d228a9a57e30ec13ab1 )
   // TODO: do we use such callback when popup closed?
   // if (widgetSettings[i])
@@ -236,18 +238,18 @@ function toastMsg(msg, typeMsg = "success", timeOut) {
 
 
 function toastMandatoryField(reqField) {
-  toastMsg("Please fill/select mandatory field(s)!", "error")
+  toastMsg("Please fill/select all mandatory field(s)!", "error")
   if (reqField.type == "select-one")
     reqField.style.setProperty("background-color", "#e85600")
   else
-    reqField.classList.add("alert-field")
+    doElemHidden(reqField, "alert-field")
 
   function toastOff() {
     {
       if (reqField.type == "select-one")
         reqField.style.setProperty("background-color", "#ededff")  // set default
       else
-        reqField.classList.remove("alert-field")
+        doElemActive(reqField, "alert-field")
     }
   }
 
@@ -255,18 +257,20 @@ function toastMandatoryField(reqField) {
 }
 
 
-function verifiedMandatoryFields(app, contentName, setFieldsToCheck) {
+function verifyMandatoryFields(app, contentName) {
   // TODO: to do better ".req-label + .req-field" functionality
   // TODO: chk all ".contactemail" (e. g. ".content_tab_followup", etc) when manually cleared
   var isVerified = true
   var fieldsToCheck = byQuery(`#el-${app} ${contentName} .req-field`)
   for (var i = 0; i < fieldsToCheck.length; i += 1) {
-    if ((fieldsToCheck[i].value == "") || (fieldsToCheck[i].value == "0")) {
+    // TODO:
+    if ((fieldsToCheck[i].value == "") || (fieldsToCheck[i].value == "0")
+      //  || (fieldsToCheck[i].innerText == "") || (fieldsToCheck[i].innerText == "0")
+    ) {
       toastMandatoryField(fieldsToCheck[i])
       isVerified = false
     }
   }
-  console.log("isVerified:", isVerified)
   return isVerified
 }
 
@@ -343,7 +347,6 @@ function uploadFile(files, apiUri, cb) {
     formData.append('file', files[i])
   toastMsg("Uploading doc(s)...")
   callPost(apiUri, formData, (state) => {
-    console.log("state:", state)
     if (state.message === "success") {
       cb && cb(state.data)
       toastMsg(`Successfully uploaded "${state.data[0].name}" file!`)
@@ -381,11 +384,11 @@ function isObjEmpty(obj) {
 
 function setTabActive(app, tabs, tab) {
   Object.keys(tabs).forEach(function (i) { byQuery(`#el-${app} .${tabs[i]}`)[0].parentNode.classList.remove("active") })
-  byQuery(`#el-${app} .${tab}`)[0].parentNode.classList.add("active")
-  byQuery(`#el-${app} .${tab}`)[0].parentNode.classList.remove("d-none")
+  doElemHidden(byQuery(`#el-${app} .${tab}`)[0].parentNode, "active")
+  doElemActive(byQuery(`#el-${app} .${tab}`)[0].parentNode)
 
   Object.keys(tabs).forEach(function (i) { byQuery(`#el-${app} .content_${tabs[i]}`)[0].classList.add("d-none") })
-  byQuery(`#el-${app} .content_${tab}`)[0].classList.remove("d-none")
+  doElemActive(byQuery(`#el-${app} .content_${tab}`)[0])
 }
 
 
@@ -478,68 +481,34 @@ function postinitStatuses(elName, tabName) {
 
 
 function onDragStart(event) {
-  console.log("onDragStart: event:", event, "id:", event.target.childNodes[0].innerText)
   event.dataTransfer.setData('text/plain', event.target.childNodes[0].innerText)
-  event.currentTarget.style.backgroundColor = '#d6d6ff'
+  event.currentTarget.style.backgroundColor = featureList["bg-color-dnd"] || "#d6d6ff"
 }
 
 
 function onDragOver(event) {
-  event.stopPropagation()
+  event.preventDefault()
 }
 
 
-function onDrop(event) {
-  console.log("onDrop: event:", event)
+function onDrop(elId, event) {
   const id = event.dataTransfer.getData('text')
-  console.log("onDrop: id:", id)
-  byQuery("#el-dnd .src .dnd").forEach(function (el) {
+  byQuery(`#${elId} .src .dnd`).forEach(function (el) {
     if (el.innerHTML.indexOf(id) !== -1) {
-      console.log(el)
       const dndElement = el
       const dropzone = event.target
       dropzone.appendChild(dndElement)
     }
   })
-  event.stopPropagation()
+  event.preventDefault()
 }
 
 
 function onDragEnd(event) {
-  event.currentTarget.style.backgroundColor = '#ededff'
+  event.currentTarget.style.backgroundColor = featureList["bg-color"] || "#ededff"
 }
 
 
-function preInitStates(maps, tab) {
-  var arr = []
-  Object.keys(maps.popup[1]).forEach(function (i) {
-    if (i == tab) {
-      console.log("preInitStates:", i)
-      Object.keys(maps.popup[1][i][1]).forEach(function (j) { arr.push(j) })
-    }
-  })
-  return arr
-}
-
-
-function preInitStates2(maps, states, arrExc = []) {
-  var arr = []
-  Object.keys(maps).forEach(function (j) { arr.push(j) })
-
-  for (var k in states) {
-    var found = arrExc.find(el => el == k)
-    if (isUndef(found))
-      // TODO: all fields which end with "_id" ("id"?) to init to 0?
-      states[k] = ""
-    else
-      states[k] = 0
-  }
-  console.log("preInitStates2: states:", states)
-  return states
-}
-
-
-// TODO:
 function cleanupStates(states, arrExc = [], initVal = "") {
   for (var k in states) {
     var found = arrExc.find(el => el == k)
@@ -551,27 +520,8 @@ function cleanupStates(states, arrExc = [], initVal = "") {
 }
 
 
-// TODO:
-function cleanupStates2(maps, states, arrExc = []) {
-  var arr = []
-  Object.keys(maps).forEach(function (j) { arr.push(j) })
-  console.log("arr:", arr)
-
-  for (var k in arr) {
-    var found = arrExc.find(el => el == k)
-    if (isUndef(found))
-      // TODO: all fields which end with "_id" ("id"?) to init to 0?
-      states[k] = ""
-    else
-      states[k] = 0
-  }
-  console.log("cleanupStates2: states:", states)
-  return states
-}
-
-
 function initStates(states, inits, arrExc = []) {
-  for (var k in states) {
+  for (var k in inits) {
     var found = arrExc.find(el => el == k)
     if (isUndef(found)) {
       if ((inits[k] == window.EMPTY) || (inits[k] == null))
@@ -596,15 +546,25 @@ function trimStates(states, arrExc = []) {
 }
 
 
+function setFieldDisabled(el) {
+  el.setAttribute("disabled", "disabled")
+}
+
+
+function setFieldEnabled(el) {
+  el.removeAttribute("disabled")
+}
+
+
 function setFieldsReadOnly(queryId) {
   // TODO: spectre.css:969 for select
-  byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => el.setAttribute("disabled", "disabled"))
+  byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => setFieldDisabled(el))
   byQuery(`#${queryId} textarea`).forEach(el => el.style.removeProperty("background-color"))
 }
 
 
 function setFieldsEditable(queryId) {
-  byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => el.removeAttribute("disabled"))
+  byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => setFieldEnabled(el))
   byQuery(`#${queryId} textarea`).forEach(el => el.style.backgroundColor = "#ededff")
 }
 
@@ -788,19 +748,20 @@ function getIcon(name, title, body) {
 
 
 // Presets some predefined value in dropdown list by "value" param
-// TODO: better name
-function setDropdownSelectedByValue(query, val) {
-  byQuery(query)[0].querySelectorAll(`[value="${val}"]`)[0].selected = true
+function setDropdownSelectedByValue(here, val) {
+  try {
+    here.querySelectorAll(`[value="${val}"]`)[0].selected = true
+  } catch {
+    console.log("setDropdownSelectedByValue: oops:", here)
+  }
 }
 
 
 // Presets some predefined value in dropdown list by tag's content
-// TODO: better name
-function setDropdownSelectedByContent(query, val) {
+function setDropdownSelectedByContent(here, val) {
   selected = false
-  byQuery(query)[0].querySelectorAll('[class="name"]').forEach(i => {
+  here.querySelectorAll('[class="name"]').forEach(i => {
     if (i.value == val) {
-      console.log("selected:", i)
       i.selected = true
       selected = true
     }
@@ -814,8 +775,6 @@ function getDropdownSelectedByValue(query, val) {
 
 
 // Clears dropdown's selected option
-// TODO: better name
-// TODO: deprecated?
 function clearDropdownSelected(query) {
   if (byQuery(query).length > 0) {
     let q = byQuery(query)[0].childNodes[0]
@@ -824,23 +783,83 @@ function clearDropdownSelected(query) {
   }
 }
 
-
-function supportDropdownSelected(el, dropdownId, query, prevVal, val) {
-  if (prevVal === null)
-    el.addEventListener('change', function (evtEl, _evtPath) {
-      evtEl.stopPropagation()
-      dropdownId = parseInt(evtEl.target.options[evtEl.target.selectedIndex].value)
-    })
-  try {
-    setDropdownSelectedByContent(query, val)
-  } catch (err) {
-    console.log("oops, supportDropdownSelected:", err, query, val)
+function supportDropdownSelected(here, prevVal, val) {
+  if (!isUndef(here)) {
+    if (prevVal === null)
+      here.addEventListener('change', function (evtEl, _evtPath) {
+        evtEl.stopPropagation()
+        dropdownId = +evtEl.target.options[evtEl.target.selectedIndex].value
+      })
+    try {
+      setDropdownSelectedByContent(here, val)
+    } catch (err) {
+      console.log("oops, supportDropdownSelected:", err, here, val)
+    }
   }
 }
 
 
 function applyPermissionGroup(group, file = 2) {
   window.document.styleSheets[file].insertRule(`.perm${group} { display: none; }`)
+}
+
+
+function renderDataList(here, dataJson) {
+  let dataList = document.createElement('datalist')
+  dataList.id = `auto-${here.classList[0]}`
+  here.setAttribute('list', dataList.id)
+  let fragment = document.createDocumentFragment()
+  if (here.nextSibling.id == dataList.id) {
+    let exist = here.nextSibling
+    exist.parentNode.removeChild(exist)
+  }
+
+  for (let o of dataJson) {
+    let option = document.createElement('option')
+    option.id = o.id
+    option.textContent = o.name
+    fragment.append(option)
+  }
+  dataList.append(fragment)
+  here.after(dataList)
+}
+
+
+function lightAutoField(here, isExist) {
+  try {
+    if (isExist) {
+      doElemHidden(here.nextElementSibling, "auto-ok")
+      doElemActive(here.nextElementSibling, "auto-ng")
+    }
+    else {
+      doElemHidden(here.nextElementSibling, "auto-ng")
+      doElemActive(here.nextElementSibling, "auto-ok")
+    }
+  } catch (err) {
+  }
+}
+
+
+function setAutoField(el, query) {
+  let child = el.target.nextSibling.childNodes
+  var isPresent = false
+  for (var i = 0; i < child.length; i++) {
+    if (child[i].innerText == el.target.value) {
+      isPresent = true
+      break
+    }
+  }
+  if (isPresent) {
+    if ((el.target.value.length > 0) && (child.length > 0))
+      return child[0].id
+    else {
+      toastMsg(`Nothing found by "${el.target.value}" pattern!`, "error")
+      lightAutoField(query, false)
+    }
+  }
+  else
+    toastMsg("Item is not selected from the list yet - please try again!", "error")
+  return 0
 }
 
 
@@ -871,14 +890,13 @@ window.viui = {
   initOnPopupOpen, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
   cleanChilds, getFormattedDate, toastMsg, toastMandatoryField,
-  verifiedMandatoryFields,
-  setActiveTab, getPosition, notImpl, getStackTrace, uploadFile, load, saveDefault,
+  verifyMandatoryFields, setActiveTab, getPosition, notImpl, getStackTrace, uploadFile, load, saveDefault,
   save, remove, isObjEmpty, setTabActive, getTs, getTs2, delay,
   postinitTitles, postinitPictures, postinitStatuses,
-  onDragStart, onDragOver, onDrop, onDragEnd, preInitStates, preInitStates2, cleanupStates,
-  initStates, trimStates, setFieldsReadOnly, setFieldsEditable,
+  onDragStart, onDragOver, onDrop, onDragEnd, cleanupStates,
+  initStates, trimStates, setFieldDisabled, setFieldEnabled, setFieldsReadOnly, setFieldsEditable,
   setEditable, setReadOnly, fetchPulldownData, enableButton, disableButton, unhideButton, hideButton,
   changeTab, initStaticTabs, initSorting, fetchData, scrollData, getIcon, setDropdownSelectedByValue,
   setDropdownSelectedByContent, getDropdownSelectedByValue, clearDropdownSelected, supportDropdownSelected,
-  applyPermissionGroup
+  applyPermissionGroup, renderDataList, lightAutoField, setAutoField
 }
