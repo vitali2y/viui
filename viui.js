@@ -3,7 +3,7 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
-// v0.12.0
+// v0.13.0
 //
 
 
@@ -14,6 +14,16 @@ let appActive
 
 function initFeatures(featureArr) {
   featureList = featureArr
+}
+
+
+function setFeature(featureKey, featureVal) {
+  featureList[featureKey] = featureVal
+}
+
+
+function getFeature(featureKey) {
+  return featureList[featureKey]
 }
 
 
@@ -61,20 +71,26 @@ function _callBackend(app, method, params, isSecureCall, cb) {
   let p = { method: method }
   if (!isUndef(params)) {
     p["body"] = JSON.stringify(params)
-    // p["body"] = params
     hd.append('Content-Type', 'application/json')
   }
   if (isSecureCall) {
-    hd.append('Authorization', localStorage.getItem('ccs-token'))
+    hd.append('Authorization', getFeature('token'))
     app = `${window.API_VER}/${app}`
   }
   p.headers = hd
   featureList["spin-on"] && featureList["spin-on"]()
   fetch(app, p)
     .then(resp => {
-      if (resp.status != 200)
+      if ((resp.status == 200 /* ok */) || (resp.status == 201 /* created */))
+        return resp.json()
+      else {
+        if (resp.status == 403 /* Forbidden */)
+          toastMsg("Forbidden!", "error")
+        if (resp.status >= 500 /* Internal Error */)
+          toastMsg("Internal error!", "error")
         cb && cb([], resp.status)
-      return resp.json()
+        return undefined
+      }
     })
     .then(fetched => {
       featureList["spin-on"] && featureList["spin-off"]()
@@ -241,15 +257,24 @@ function toastMandatoryField(reqField) {
   toastMsg("Please fill/select all mandatory field(s)!", "error")
   if (reqField.type == "select-one")
     reqField.style.setProperty("background-color", "#e85600")
-  else
-    doElemHidden(reqField, "alert-field")
+  else {
+    if (reqField.type == "textarea")
+      reqField.style["background-color"] = "#e85600"
+    else
+      doElemHidden(reqField, "alert-field")
+  }
 
   function toastOff() {
     {
+      // set default
       if (reqField.type == "select-one")
-        reqField.style.setProperty("background-color", "#ededff")  // set default
-      else
-        doElemActive(reqField, "alert-field")
+        reqField.style.setProperty("background-color", getFeature("bg-color"))
+      else {
+        if (reqField.type == "textarea")
+          reqField.style["background-color"] = getFeature("bg-color")
+        else
+          doElemActive(reqField, "alert-field")
+      }
     }
   }
 
@@ -265,7 +290,6 @@ function verifyMandatoryFields(app, contentName) {
   for (var i = 0; i < fieldsToCheck.length; i += 1) {
     // TODO:
     if ((fieldsToCheck[i].value == "") || (fieldsToCheck[i].value == "0")
-      //  || (fieldsToCheck[i].innerText == "") || (fieldsToCheck[i].innerText == "0")
     ) {
       toastMandatoryField(fieldsToCheck[i])
       isVerified = false
@@ -392,19 +416,9 @@ function setTabActive(app, tabs, tab) {
 }
 
 
-function getTs(d) {
+function getDateFromSecs(d) {
   const pad = (n, s = 2) => (`${new Array(s).fill(0)}${n}`).slice(-s)
-  return `${pad(d.getFullYear(), 4)}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
-
-
-function getTs2(d) {
-  return d.getFullYear() +
-    "/" + (d.getMonth() + 1) +
-    "/" + d.getDate() +
-    " " + d.getHours() +
-    ":" + d.getMinutes() +
-    ":" + d.getSeconds()
+  return `${pad(d.getFullYear(), 4)}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 
@@ -474,6 +488,32 @@ function postinitStatuses(elName, tabName) {
         case "no":
           el.innerHTML = "&#xe303;" // .md-highlight_off
           el.title = "No"
+          break
+      }
+    })
+}
+
+
+// post init for priority column
+function postinitPrios(elName, tabName) {
+  byQuery(`#app-${elName} .content_${tabName} .prio-tooltip`)
+    .forEach(function (el) {
+      switch (el.innerText) {
+        // NOTE: innerHTML codes @ MaterialIcons.css
+        case 'U':
+          el.innerHTML = "&#xe289;" // .md-flash_on
+          el.title = "Urgent"
+          el.classList.add("text-error")
+          break
+        case 'W':
+          el.innerHTML = "&#xe510;" // .md-priority_high
+          el.title = "Important"
+          el.classList.add("text-warning")
+          break
+        case 'I':
+          el.innerHTML = "&#xe377;" // .md-lightbulb
+          el.title = "Info"
+          el.classList.add("text-success")
           break
       }
     })
@@ -556,28 +596,37 @@ function setFieldEnabled(el) {
 }
 
 
-function setFieldsReadOnly(queryId) {
+function setFieldsReadOnly(queryId, arrExc = []) {
   // TODO: spectre.css:969 for select
-  byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => setFieldDisabled(el))
+  byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => {
+    var found = arrExc.find(elExc => elExc == el.classList[0])
+    if (isUndef(found))
+      setFieldDisabled(el)
+  }
+  )
   byQuery(`#${queryId} textarea`).forEach(el => el.style.removeProperty("background-color"))
 }
 
 
-function setFieldsEditable(queryId) {
-  byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => setFieldEnabled(el))
-  byQuery(`#${queryId} textarea`).forEach(el => el.style.backgroundColor = "#ededff")
+function setFieldsEditable(queryId, arrExc = []) {
+  byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => {
+    var found = arrExc.find(elExc => elExc == el.classList[0])
+    if (isUndef(found))
+      setFieldEnabled(el)
+  })
+  byQuery(`#${queryId} textarea`).forEach(el => el.style.backgroundColor = getFeature("bg-color"))
 }
 
 
-function setEditable(el) {
-  setFieldsEditable(el._anchor)
+function setEditable(el, arrExc = []) {
+  setFieldsEditable(el._anchor, arrExc)
   // TODO: as param or cb
   el.state.popup.saveOrEdit = "Save"
 }
 
 
-function setReadOnly(el) {
-  setFieldsReadOnly(el._anchor)
+function setReadOnly(el, arrExc = []) {
+  setFieldsReadOnly(el._anchor, arrExc)
   // TODO: as param or cb
   el.state.popup.saveOrEdit = "Edit"
 }
@@ -759,13 +808,12 @@ function setDropdownSelectedByValue(here, val) {
 
 // Presets some predefined value in dropdown list by tag's content
 function setDropdownSelectedByContent(here, val) {
-  selected = false
-  here.querySelectorAll('[class="name"]').forEach(i => {
-    if (i.value == val) {
-      i.selected = true
-      selected = true
-    }
-  })
+  if (!isUndef(here)) {
+    here.querySelectorAll('[class="name"]').forEach(i => {
+      if (i.value == val)
+        i.selected = true
+    })
+  }
 }
 
 
@@ -775,6 +823,20 @@ function getDropdownSelectedByValue(query, val) {
 
 
 // Clears dropdown's selected option
+function clearDropdownSelected2(query) {
+  if (byQuery(query).length > 0) {
+    let i = 0
+    byQuery(query)[0].childNodes.forEach(opt => {
+      if (opt.selected)
+        opt.selected = false
+      i++
+    })
+    byQuery(query)[0].childNodes[0].selected = true
+  }
+}
+
+
+// TODO: fix both clearDropdownSelected*
 function clearDropdownSelected(query) {
   if (byQuery(query).length > 0) {
     let q = byQuery(query)[0].childNodes[0]
@@ -783,18 +845,16 @@ function clearDropdownSelected(query) {
   }
 }
 
-function supportDropdownSelected(here, prevVal, val) {
+
+// TODO: deprecated
+function supportDropdownSelected(here, _prevVal, val) {
   if (!isUndef(here)) {
-    if (prevVal === null)
-      here.addEventListener('change', function (evtEl, _evtPath) {
-        evtEl.stopPropagation()
-        dropdownId = +evtEl.target.options[evtEl.target.selectedIndex].value
-      })
     try {
-      setDropdownSelectedByContent(here, val)
+      return setDropdownSelectedByContent(here, val)
     } catch (err) {
       console.log("oops, supportDropdownSelected:", err, here, val)
     }
+    return -2
   }
 }
 
@@ -885,18 +945,18 @@ function setAutoField(el, query) {
 
 
 window.viui = {
-  initFeatures, reload, registerApp,
+  initFeatures, setFeature, getFeature, reload, registerApp,
   byId, byName, byCls, byQuery, isUndef, callGet, callPost, callPut, callPostUnsecure, callDelete,
   initOnPopupOpen, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
   cleanChilds, getFormattedDate, toastMsg, toastMandatoryField,
   verifyMandatoryFields, setActiveTab, getPosition, notImpl, getStackTrace, uploadFile, load, saveDefault,
-  save, remove, isObjEmpty, setTabActive, getTs, getTs2, delay,
-  postinitTitles, postinitPictures, postinitStatuses,
+  save, remove, isObjEmpty, setTabActive, getDateFromSecs, delay,
+  postinitTitles, postinitPictures, postinitStatuses, postinitPrios,
   onDragStart, onDragOver, onDrop, onDragEnd, cleanupStates,
   initStates, trimStates, setFieldDisabled, setFieldEnabled, setFieldsReadOnly, setFieldsEditable,
   setEditable, setReadOnly, fetchPulldownData, enableButton, disableButton, unhideButton, hideButton,
   changeTab, initStaticTabs, initSorting, fetchData, scrollData, getIcon, setDropdownSelectedByValue,
-  setDropdownSelectedByContent, getDropdownSelectedByValue, clearDropdownSelected, supportDropdownSelected,
+  setDropdownSelectedByContent, getDropdownSelectedByValue, clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
   applyPermissionGroup, renderDataList, lightAutoField, setAutoField
 }
