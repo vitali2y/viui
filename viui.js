@@ -3,7 +3,7 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
-// v0.13.0
+// v0.14.0
 //
 
 
@@ -89,7 +89,7 @@ function _callBackend(app, method, params, isSecureCall, cb) {
         if (resp.status >= 500 /* Internal Error */)
           toastMsg("Internal error!", "error")
         cb && cb([], resp.status)
-        return undefined
+        // return undefined
       }
     })
     .then(fetched => {
@@ -135,7 +135,7 @@ function initOnPopupOpen(id, initFn) {
 
 function openPopup(id, status = 'active') {
   var i = `el-${id}`
-  byId(i).classList.add(status)
+  doElemHidden(byId(i), status)
   // TODO: redo (https://gist.github.com/amysimmons/3d228a9a57e30ec13ab1 )
   if (widgetSettings[i])
     widgetSettings[i]()
@@ -156,7 +156,7 @@ function doAppAttrHidden(app, attr) {
   if ((app !== null) && ((attr !== null))) {
     var l = byCls(`${app}-${attr}`)
     for (var p = 0; p < l.length; p++)
-      l[p].classList.add("d-none")
+      doElemHidden(l[p])
   }
 }
 
@@ -166,7 +166,7 @@ function doAppAttrActive(app, attr) {
   if ((app !== null) && ((attr !== null))) {
     var l = byCls(`${app}-${attr}`)
     for (var p = 0; p < l.length; p++)
-      l[p].classList.remove("d-none")
+      doElemActive(l[p])
   }
 }
 
@@ -231,21 +231,33 @@ function cleanChilds(id) {
 }
 
 
-function getFormattedDate(ts) {
-  var date = new Date(ts * 1000)
-  var month = date.getMonth() + 1
-  var day = date.getDate()
-  var hour = date.getHours()
-  var min = date.getMinutes()
-  var sec = date.getSeconds()
-  month = (month < 10 ? '0' : '') + month
-  day = (day < 10 ? '0' : '') + day
-  hour = (hour < 10 ? '0' : '') + hour
-  min = (min < 10 ? '0' : '') + min
-  sec = (sec < 10 ? '0' : '') + sec
-  return date.getFullYear() + '-' + month + '-' + day + ' ' + hour + ':' + min
+// function getFormattedDate(ts) {
+//   var date = new Date(ts * 1000)
+//   var month = date.getMonth() + 1
+//   var day = date.getDate()
+//   var hour = date.getHours()
+//   var min = date.getMinutes()
+//   var sec = date.getSeconds()
+//   month = (month < 10 ? '0' : '') + month
+//   day = (day < 10 ? '0' : '') + day
+//   hour = (hour < 10 ? '0' : '') + hour
+//   min = (min < 10 ? '0' : '') + min
+//   sec = (sec < 10 ? '0' : '') + sec
+//   return date.getFullYear() + '-' + month + '-' + day + ' ' + hour + ':' + min
+// }
+
+
+function getDateFromSecs(d) {
+  if (d.length <= 1) return d
+  var d = new Date(d.toString() * 1000)
+  const pad = (n, s = 2) => (`${new Array(s).fill(0)}${n}`).slice(-s)
+  return `${pad(d.getFullYear(), 4)}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+
+function getSecsFromDate(d) {
+return new Date(d).getTime() / 1000 
+}
 
 function toastMsg(msg, typeMsg = "success", timeOut) {
   if (featureList["toast"])
@@ -407,18 +419,12 @@ function isObjEmpty(obj) {
 
 
 function setTabActive(app, tabs, tab) {
-  Object.keys(tabs).forEach(function (i) { byQuery(`#el-${app} .${tabs[i]}`)[0].parentNode.classList.remove("active") })
+  Object.keys(tabs).forEach(i => { byQuery(`#el-${app} .${tabs[i]}`)[0].parentNode.classList.remove("active") })
   doElemHidden(byQuery(`#el-${app} .${tab}`)[0].parentNode, "active")
   doElemActive(byQuery(`#el-${app} .${tab}`)[0].parentNode)
 
-  Object.keys(tabs).forEach(function (i) { byQuery(`#el-${app} .content_${tabs[i]}`)[0].classList.add("d-none") })
+  Object.keys(tabs).forEach(i => { byQuery(`#el-${app} .content_${tabs[i]}`)[0].classList.add("d-none") })
   doElemActive(byQuery(`#el-${app} .content_${tab}`)[0])
-}
-
-
-function getDateFromSecs(d) {
-  const pad = (n, s = 2) => (`${new Array(s).fill(0)}${n}`).slice(-s)
-  return `${pad(d.getFullYear(), 4)}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 
@@ -433,90 +439,94 @@ var delay = (function () {
 
 // setting title tooltips for potentially long columns
 function postinitTitles(elName, tabName) {
-  byQuery(`#el-${elName} .content_${tabName} .title-tooltip`)
-    .forEach(function (el) { el.title = el.innerText })
+  byQuery(`#el-${elName} .content_${tabName} .title-tooltip`).forEach(el => { el.title = el.innerText })
 }
 
 
 // post init for picture columns
 function postinitPictures(elName, tabName) {
-  byQuery(`#el-${elName} .content_${tabName} .picture-tooltip`)
-    .forEach(function (el) {
-      if (el.innerText === "N") {
-        el.innerHTML = "&#xe31b;"
-        el.title = "Absent"
-      }
-      else {
-        el.innerHTML = "&#xea8e;"
-        el.title = "Present"
-      }
-    })
+  byQuery(`#el-${elName} .content_${tabName} .picture-tooltip`).forEach(el => {
+    if (el.innerText === "N") {
+      el.innerHTML = "&#xe31b;"
+      el.title = "Absent"
+    }
+    else {
+      el.innerHTML = "&#xea8e;"
+      el.title = "Present"
+    }
+  })
 }
 
 
 // post init for status columns
 function postinitStatuses(elName, tabName) {
   // TODO: to preliminary pass innerHTML and title sets via init()
-  byQuery(`#app-${elName} .content_${tabName} .status-tooltip`)
-    .forEach(function (el) {
-      switch (el.innerText) {
-        // NOTE: innerHTML codes @ MaterialIcons.css
-        case "1":
-          el.innerHTML = "&#xe03e;"
-          el.title = "Active"
-          break
-        case "2":
-          el.innerHTML = "&#xe03f;"
-          el.title = "Disabled"
-          break
-        case "3":
-          el.innerHTML = "&#xe01f;"
-          el.title = "Pending"
-          break
-        case "Y":
-          el.innerHTML = "&#xe303;" // .md-highlight_off
-          el.title = "Disabled"
-          break
-        case "N":
-          el.innerHTML = "&#xe8e7;" // .md-task_alt
-          el.title = "Enabled"
-          break
-        case "yes":
-          el.innerHTML = "&#xe8e7;" // .md-task_alt
-          el.title = "Yes"
-          break
-        case "no":
-          el.innerHTML = "&#xe303;" // .md-highlight_off
-          el.title = "No"
-          break
-      }
-    })
+  byQuery(`#app-${elName} .content_${tabName} .status-tooltip`).forEach(el => {
+    switch (el.innerText) {
+      // NOTE: innerHTML codes @ MaterialIcons.css
+      case "1":
+        el.innerHTML = "&#xe03e;"
+        el.title = "Active"
+        break
+      case "2":
+        el.innerHTML = "&#xe03f;"
+        el.title = "Disabled"
+        break
+      case "3":
+        el.innerHTML = "&#xe01f;"
+        el.title = "Pending"
+        break
+      case "Y":
+        el.innerHTML = "&#xe303;" // .md-highlight_off
+        el.title = "Disabled"
+        break
+      case "N":
+        el.innerHTML = "&#xe8e7;" // .md-task_alt
+        el.title = "Enabled"
+        break
+      case "yes":
+        el.innerHTML = "&#xe8e7;" // .md-task_alt
+        el.title = "Yes"
+        break
+      case "no":
+        el.innerHTML = "&#xe303;" // .md-highlight_off
+        el.title = "No"
+        break
+      case "I":
+        el.innerHTML = "&#xe05e;" // .md-arrow_downward
+        el.title = "In"
+        break
+      case "O":
+        el.innerHTML = "&#xe068;" // .md-arrow_upward
+        el.title = "Out"
+        break
+    }
+  })
 }
 
 
 // post init for priority column
 function postinitPrios(elName, tabName) {
-  byQuery(`#app-${elName} .content_${tabName} .prio-tooltip`)
-    .forEach(function (el) {
-      switch (el.innerText) {
-        // NOTE: innerHTML codes @ MaterialIcons.css
-        case 'U':
-          el.innerHTML = "&#xe289;" // .md-flash_on
-          el.title = "Urgent"
-          el.classList.add("text-error")
-          break
-        case 'W':
-          el.innerHTML = "&#xe510;" // .md-priority_high
-          el.title = "Important"
-          el.classList.add("text-warning")
-          break
-        case 'I':
-          el.innerHTML = "&#xe377;" // .md-lightbulb
-          el.title = "Info"
-          el.classList.add("text-success")
-          break
-      }
-    })
+  byQuery(`#app-${elName} .content_${tabName} .prio-tooltip`).forEach(el => {
+    switch (el.innerText) {
+      // NOTE: innerHTML codes @ MaterialIcons.css
+      case 'U':
+        el.innerHTML = "&#xe289;" // .md-flash_on
+        el.title = "Urgent"
+        el.classList.add("text-error")
+        break
+      case 'W':
+        el.innerHTML = "&#xe510;" // .md-priority_high
+        el.title = "Important"
+        el.classList.add("text-warning")
+        break
+      case 'I':
+        el.innerHTML = "&#xe377;" // .md-lightbulb
+        el.title = "Info"
+        el.classList.add("text-success")
+        break
+    }
+  })
 }
 
 
@@ -533,7 +543,7 @@ function onDragOver(event) {
 
 function onDrop(elId, event) {
   const id = event.dataTransfer.getData('text')
-  byQuery(`#${elId} .src .dnd`).forEach(function (el) {
+  byQuery(`#${elId} .src .dnd`).forEach(el => {
     if (el.innerHTML.indexOf(id) !== -1) {
       const dndElement = el
       const dropzone = event.target
@@ -571,6 +581,33 @@ function initStates(states, inits, arrExc = []) {
     }
     else
       states[k] = 0
+  }
+}
+
+
+function initStates2(states, inits, arrExc = []) {
+
+  function _initStates(states, inits, arrExc) {
+    for (var k in inits) {
+      var found = arrExc.find(el => el == k)
+      if (isUndef(found)) {
+        if ((inits[k] == window.EMPTY) || (inits[k] == null))
+          states[k] = ""
+        else
+          states[k] = inits[k]
+      }
+      else
+        states[k] = 0
+    }
+  }
+
+  if (isUndef(inits)) // single item
+    _initStates(states, inits, arrExc)
+  else {
+    states = []
+    for (var i = 0; i < inits.length; i++) { // array of items
+      _initStates(states[i], inits[i], arrExc)
+    }
   }
 }
 
@@ -666,7 +703,7 @@ function hideButton(el, btnName) {
 function changeTab(app, statePopups, activeTab) {
   var q = Object.keys(statePopups)
   var tabsAll = []
-  Object.keys(q).forEach(function (i) { if (q[i].startsWith("tab_")) tabsAll.push(q[i]) })
+  Object.keys(q).forEach(i => { if (q[i].startsWith("tab_")) tabsAll.push(q[i]) })
   setTabActive(app, tabsAll, activeTab)
   return activeTab
 }
@@ -676,25 +713,26 @@ function initStaticTabs(app, statePopups, activeTabs) {
   // hide all tabs, and ...
   var q = Object.keys(statePopups)
   var tabs = []
-  Object.keys(q).forEach(function (i) { if (q[i].startsWith("tab_")) tabs.push(q[i]) })
-  Object.keys(tabs).forEach(function (i) {
+  Object.keys(q).forEach(i => {
+    if (q[i].startsWith("tab_")) tabs.push(q[i])
+  })
+  Object.keys(tabs).forEach(i => {
     byQuery(`#el-${app} .${tabs[i]}`)[0]
       .parentNode.classList.add("d-none")
   })
 
   // ... open required tabs only
   tabs = activeTabs.map(i => 'tab_' + i)
-  Object.keys(tabs).forEach(function (i) {
+  Object.keys(tabs).forEach(i => {
     byQuery(`#el-${app} .${tabs[i]}`)[0]
       .parentNode.classList.remove("d-none")
   })
 }
 
 
-// function renderAvatar(el, val) {
-//   el.append(hashicon(val, 30))
-//   el.append(" " + val)
-// }
+function renderAvatar(el, val, size = 30) {
+  el.appendChild(hashicon("" + val, size))
+}
 
 
 function initSorting(app, cb) {
@@ -852,7 +890,7 @@ function supportDropdownSelected(here, _prevVal, val) {
     try {
       return setDropdownSelectedByContent(here, val)
     } catch (err) {
-      console.log("oops, supportDropdownSelected:", err, here, val)
+      console.log("supportDropdownSelected: oops:", err)
     }
     return -2
   }
@@ -886,32 +924,38 @@ function renderDataList(here, dataJson) {
 
 
 function lightAutoField(here, isExist) {
-  try {
-    if (isExist) {
-      doElemHidden(here.nextElementSibling, "auto-ok")
-      doElemActive(here.nextElementSibling, "auto-ng")
+  if (isUndef(here))
+    return false
+  else {
+    try {
+      if (isExist) {
+        doElemHidden(here.nextElementSibling, "auto-ok")
+        doElemActive(here.nextElementSibling, "auto-ng")
+        return true
+      }
+      else {
+        doElemHidden(here.nextElementSibling, "auto-ng")
+        doElemActive(here.nextElementSibling, "auto-ok")
+        return true
+      }
+    } catch (err) {
+      return false
     }
-    else {
-      doElemHidden(here.nextElementSibling, "auto-ng")
-      doElemActive(here.nextElementSibling, "auto-ok")
-    }
-  } catch (err) {
   }
 }
 
 
 function setAutoField(el, query) {
   let child = el.target.nextSibling.childNodes
-  var isPresent = false
-  for (var i = 0; i < child.length; i++) {
-    if (child[i].innerText == el.target.value) {
-      isPresent = true
+  var idx = -1
+  for (idx = 0; idx < child.length; idx++) {
+    if (child[idx].innerText == el.target.value) {
       break
     }
   }
-  if (isPresent) {
+  if (idx > -1) {
     if ((el.target.value.length > 0) && (child.length > 0))
-      return child[0].id
+      return child[idx].id
     else {
       toastMsg(`Nothing found by "${el.target.value}" pattern!`, "error")
       lightAutoField(query, false)
@@ -919,7 +963,7 @@ function setAutoField(el, query) {
   }
   else
     toastMsg("Item is not selected from the list yet - please try again!", "error")
-  return 0
+  return idx
 }
 
 
@@ -949,14 +993,15 @@ window.viui = {
   byId, byName, byCls, byQuery, isUndef, callGet, callPost, callPut, callPostUnsecure, callDelete,
   initOnPopupOpen, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
-  cleanChilds, getFormattedDate, toastMsg, toastMandatoryField,
+  cleanChilds, toastMsg, toastMandatoryField,
   verifyMandatoryFields, setActiveTab, getPosition, notImpl, getStackTrace, uploadFile, load, saveDefault,
-  save, remove, isObjEmpty, setTabActive, getDateFromSecs, delay,
+  save, remove, isObjEmpty, setTabActive, getDateFromSecs, getSecsFromDate, delay,
   postinitTitles, postinitPictures, postinitStatuses, postinitPrios,
   onDragStart, onDragOver, onDrop, onDragEnd, cleanupStates,
   initStates, trimStates, setFieldDisabled, setFieldEnabled, setFieldsReadOnly, setFieldsEditable,
   setEditable, setReadOnly, fetchPulldownData, enableButton, disableButton, unhideButton, hideButton,
-  changeTab, initStaticTabs, initSorting, fetchData, scrollData, getIcon, setDropdownSelectedByValue,
-  setDropdownSelectedByContent, getDropdownSelectedByValue, clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
+  changeTab, initStaticTabs, renderAvatar, initSorting, fetchData, scrollData, getIcon,
+  setDropdownSelectedByValue, setDropdownSelectedByContent, getDropdownSelectedByValue,
+  clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
   applyPermissionGroup, renderDataList, lightAutoField, setAutoField
 }
