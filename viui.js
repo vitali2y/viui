@@ -3,7 +3,7 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
-// v0.14.0
+// v0.15.0
 //
 
 
@@ -295,6 +295,7 @@ function toastMandatoryField(reqField) {
 
 
 function verifyMandatoryFields(app, contentName) {
+  // add validation for types, i. e. p.match(/\d/g).length >= 10 for phone
   // TODO: to do better ".req-label + .req-field" functionality
   // TODO: chk all ".contactemail" (e. g. ".content_tab_followup", etc) when manually cleared
   var isVerified = true
