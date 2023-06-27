@@ -3,7 +3,7 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
-// v0.15.0
+// v0.16.0
 //
 
 
@@ -256,7 +256,7 @@ function getDateFromSecs(d) {
 
 
 function getSecsFromDate(d) {
-return new Date(d).getTime() / 1000 
+  return new Date(d).getTime() / 1000
 }
 
 function toastMsg(msg, typeMsg = "success", timeOut) {
@@ -968,6 +968,15 @@ function setAutoField(el, query) {
 }
 
 
+function formatPhoneNumber(phoneNumber) {
+  const cleanNum = phoneNumber.toString().replace(/\D/g, "")
+  const match = cleanNum.match(/^(\d{3})(\d{0,3})(\d{0,4})$/)
+  if (match)
+    return match[1] + "-" + (match[2] ? match[2] + "-" : "") + match[3]
+  return cleanNum
+}
+
+
 // // overwriting system console.log for sending browser logs to the server
 // var orgLog = window.console.log
 // window.console.log = function () {
@@ -1004,5 +1013,5 @@ window.viui = {
   changeTab, initStaticTabs, renderAvatar, initSorting, fetchData, scrollData, getIcon,
   setDropdownSelectedByValue, setDropdownSelectedByContent, getDropdownSelectedByValue,
   clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
-  applyPermissionGroup, renderDataList, lightAutoField, setAutoField
+  applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber
 }
