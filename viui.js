@@ -3,7 +3,7 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
-// v0.17.0
+// v0.18.0
 //
 
 
@@ -626,11 +626,16 @@ function trimStates(states, arrExc = []) {
 
 function setFieldDisabled(el) {
   el.setAttribute("disabled", "disabled")
+  if (el.classList[0] == "dropdown")
+    el.style.backgroundColor = getFeature("bg-color-disabled")
 }
 
 
 function setFieldEnabled(el) {
   el.removeAttribute("disabled")
+  // TODO: the same for all elems?
+  if (el.classList[0] == "dropdown")
+    el.style.backgroundColor = getFeature("bg-color")
 }
 
 
@@ -643,16 +648,23 @@ function setFieldsReadOnly(queryId, arrExc = []) {
   }
   )
   byQuery(`#${queryId} textarea`).forEach(el => el.style.removeProperty("background-color"))
+  byQuery(`#${queryId} .domain_or_company`).forEach(el => ui.doElemHidden(el))  // TODO: avoid hardcode
 }
 
 
 function setFieldsEditable(queryId, arrExc = []) {
   byQuery(`#${queryId} input, #${queryId} select, #${queryId} textarea`).forEach(el => {
-    var found = arrExc.find(elExc => elExc == el.classList[0])
-    if (isUndef(found))
-      setFieldEnabled(el)
+    if (el.tagName == "SELECT") {
+      if (isUndef(arrExc.find(elExc => elExc == el.parentNode.classList[0])))
+        setFieldEnabled(el)
+    }
+    else {
+      if (isUndef(arrExc.find(elExc => elExc == el.classList[0])))
+        setFieldEnabled(el)
+    }
   })
   byQuery(`#${queryId} textarea`).forEach(el => el.style.backgroundColor = getFeature("bg-color"))
+  byQuery(`#${queryId} .domain_or_company`).forEach(el => ui.doElemActive(el))  // TODO: avoid hardcode
 }
 
 
@@ -977,6 +989,16 @@ function formatPhoneNumber(phoneNumber) {
 }
 
 
+function getActivePopupName() {
+  return ui.byQuery(".modal.active")[0].id
+}
+
+
+function getActiveTabName() {
+  return byQuery(".modal.active .tab-item.active")[0].firstChild.outerText
+}
+
+
 // // overwriting system console.log for sending browser logs to the server
 // var orgLog = window.console.log
 // window.console.log = function () {
@@ -1013,5 +1035,5 @@ window.viui = {
   changeTab, initStaticTabs, renderAvatar, initSorting, fetchData, scrollData, getIcon,
   setDropdownSelectedByValue, setDropdownSelectedByContent, getDropdownSelectedByValue,
   clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
-  applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber
+  applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber, getActivePopupName, getActiveTabName
 }
