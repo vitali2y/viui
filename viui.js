@@ -3,8 +3,6 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
-// v0.18.0
-//
 
 
 let appList = []
@@ -990,12 +988,20 @@ function formatPhoneNumber(phoneNumber) {
 
 
 function getActivePopupName() {
-  return ui.byQuery(".modal.active")[0].id
+  try {
+    return ui.byQuery(".modal.active")[0].id
+  } catch (error) {
+    return ""
+  }
 }
 
 
 function getActiveTabName() {
-  return byQuery(".modal.active .tab-item.active")[0].firstChild.outerText
+  try {
+    return byQuery(".modal.active .tab-item.active")[0].firstChild.outerText
+  } catch (error) {
+    return ""
+  }
 }
 
 
