@@ -202,7 +202,7 @@ function doElemActiveById(id, attr) {
 
 function doAppActive(app = null, cb) {
   for (var a = 0; a < appList.length; a++) {
-    doAppHidden(appList[a])
+    doElemHiddenById("app-" + appList[a])
   }
   if (app != null) {
     appActive = app
@@ -464,16 +464,12 @@ function postinitStatuses(elName, tabName) {
     switch (el.innerText) {
       // NOTE: innerHTML codes @ MaterialIcons.css
       case "1":
-        el.innerHTML = "&#xe03e;"
-        el.title = "Active"
+        el.innerHTML = "&#xe03f;"
+        el.title = "Non Active"
         break
       case "2":
-        el.innerHTML = "&#xe03f;"
-        el.title = "Disabled"
-        break
-      case "3":
-        el.innerHTML = "&#xe01f;"
-        el.title = "Pending"
+        el.innerHTML = "&#xe03e;"
+        el.title = "Active"
         break
       case "Y":
         el.innerHTML = "&#xe303;" // .md-highlight_off
@@ -570,7 +566,7 @@ function cleanupStates(states, arrExc = [], initVal = "") {
 
 
 function initStates(states, inits, arrExc = []) {
-  for (var k in inits) {
+  for (var k in states) {
     var found = arrExc.find(el => el == k)
     if (isUndef(found)) {
       if ((inits[k] == window.EMPTY) || (inits[k] == null))
@@ -584,31 +580,31 @@ function initStates(states, inits, arrExc = []) {
 }
 
 
-function initStates2(states, inits, arrExc = []) {
+// function initStates2(states, inits, arrExc = []) {
 
-  function _initStates(states, inits, arrExc) {
-    for (var k in inits) {
-      var found = arrExc.find(el => el == k)
-      if (isUndef(found)) {
-        if ((inits[k] == window.EMPTY) || (inits[k] == null))
-          states[k] = ""
-        else
-          states[k] = inits[k]
-      }
-      else
-        states[k] = 0
-    }
-  }
+//   function _initStates(states, inits, arrExc) {
+//     for (var k in inits) {
+//       var found = arrExc.find(el => el == k)
+//       if (isUndef(found)) {
+//         if ((inits[k] == window.EMPTY) || (inits[k] == null))
+//           states[k] = ""
+//         else
+//           states[k] = inits[k]
+//       }
+//       else
+//         states[k] = 0
+//     }
+//   }
 
-  if (isUndef(inits)) // single item
-    _initStates(states, inits, arrExc)
-  else {
-    states = []
-    for (var i = 0; i < inits.length; i++) { // array of items
-      _initStates(states[i], inits[i], arrExc)
-    }
-  }
-}
+//   if (isUndef(inits)) // single item
+//     _initStates(states, inits, arrExc)
+//   else {
+//     states = []
+//     for (var i = 0; i < inits.length; i++) { // array of items
+//       _initStates(states[i], inits[i], arrExc)
+//     }
+//   }
+// }
 
 
 function trimStates(states, arrExc = []) {
@@ -845,6 +841,14 @@ function getIcon(name, title, body) {
 }
 
 
+function setDropdownSelected(el, val) {
+  if (el.parentNode) {
+    ui.setDropdownSelectedByContent(el.parentNode.nextElementSibling, val)
+    return val
+  }
+}
+
+
 // Presets some predefined value in dropdown list by "value" param
 function setDropdownSelectedByValue(here, val) {
   try {
@@ -1039,7 +1043,7 @@ window.viui = {
   initStates, trimStates, setFieldDisabled, setFieldEnabled, setFieldsReadOnly, setFieldsEditable,
   setEditable, setReadOnly, fetchPulldownData, enableButton, disableButton, unhideButton, hideButton,
   changeTab, initStaticTabs, renderAvatar, initSorting, fetchData, scrollData, getIcon,
-  setDropdownSelectedByValue, setDropdownSelectedByContent, getDropdownSelectedByValue,
+  setDropdownSelected, setDropdownSelectedByValue, setDropdownSelectedByContent, getDropdownSelectedByValue,
   clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
   applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber, getActivePopupName, getActiveTabName
 }
