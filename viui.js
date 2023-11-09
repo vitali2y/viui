@@ -8,6 +8,9 @@
 let appList = []
 let featureList = {}
 let appActive
+const widgetOpenSettings = {}
+const widgetCloseSettings = {}
+let stackList = []
 
 
 function initFeatures(featureArr) {
@@ -123,10 +126,17 @@ function callDelete(app, params, cb) {
 }
 
 
-const widgetSettings = {}
+
 function initOnPopupOpen(id, initFn) {
   var i = `el-${id}`
-  widgetSettings[i] = initFn
+  widgetOpenSettings[i] = initFn
+  initFn
+}
+
+
+function initOnPopupClose(id, initFn) {
+  var i = `el-${id}`
+  widgetCloseSettings[i] = initFn
   initFn
 }
 
@@ -135,17 +145,17 @@ function openPopup(id, status = 'active') {
   var i = `el-${id}`
   doElemHidden(byId(i), status)
   // TODO: redo (https://gist.github.com/amysimmons/3d228a9a57e30ec13ab1 )
-  if (widgetSettings[i])
-    widgetSettings[i]()
+  if (widgetOpenSettings[i])
+    widgetOpenSettings[i]()
 }
 
 
 function closePopup(id, status = 'active') {
-  doElemActive(byId(`el-${id}`), status)
+  var i = `el-${id}`
+  doElemActive(byId(i), status)
   // TODO: redo (https://gist.github.com/amysimmons/3d228a9a57e30ec13ab1 )
-  // TODO: do we use such callback when popup closed?
-  // if (widgetSettings[i])
-  //   widgetSettings[i]()
+  if (widgetCloseSettings[i])
+    widgetCloseSettings[i]()
 }
 
 
@@ -809,6 +819,8 @@ function fetchData(app, cb) {
     url = app._url
   callGet(`${url}limit=${app.limit}&offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
     // TODO: to chk stateJson.code
+    if (typeof stateJson === "string")
+      stateJson = JSON.parse(stateJson)
     if (isUndef(app._url)) {
       app.state.list = app.state.list.concat(stateJson.data)
       cb && cb()
@@ -1009,6 +1021,19 @@ function getActiveTabName() {
 }
 
 
+function pushPopup() {
+  stackList.push(byQuery(".modal.active")[0].id.substring(3, 999))
+}
+
+
+function popPopup() {
+  if (stackList.length > 0)
+    return stackList.pop()
+  else
+    return 0
+}
+
+
 // // overwriting system console.log for sending browser logs to the server
 // var orgLog = window.console.log
 // window.console.log = function () {
@@ -1033,7 +1058,7 @@ function getActiveTabName() {
 window.viui = {
   initFeatures, setFeature, getFeature, reload, registerApp,
   byId, byName, byCls, byQuery, isUndef, callGet, callPost, callPut, callPostUnsecure, callDelete,
-  initOnPopupOpen, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
+  initOnPopupOpen, initOnPopupClose, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
   cleanChilds, toastMsg, toastMandatoryField,
   verifyMandatoryFields, setActiveTab, getPosition, notImpl, getStackTrace, uploadFile, load, saveDefault,
@@ -1045,5 +1070,6 @@ window.viui = {
   changeTab, initStaticTabs, renderAvatar, initSorting, fetchData, scrollData, getIcon,
   setDropdownSelected, setDropdownSelectedByValue, setDropdownSelectedByContent, getDropdownSelectedByValue,
   clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
-  applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber, getActivePopupName, getActiveTabName
+  applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber,
+  getActivePopupName, getActiveTabName, pushPopup, popPopup
 }
