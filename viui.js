@@ -652,7 +652,7 @@ function setFieldsReadOnly(queryId, arrExc = []) {
   }
   )
   byQuery(`#${queryId} textarea`).forEach(el => el.style.removeProperty("background-color"))
-  byQuery(`#${queryId} .domain_or_company`).forEach(el => ui.doElemHidden(el))  // TODO: avoid hardcode
+  byQuery(`#${queryId} .domain_or_company`).forEach(el => doElemHidden(el))  // TODO: avoid hardcode
 }
 
 
@@ -668,7 +668,7 @@ function setFieldsEditable(queryId, arrExc = []) {
     }
   })
   byQuery(`#${queryId} textarea`).forEach(el => el.style.backgroundColor = getFeature("bg-color"))
-  byQuery(`#${queryId} .domain_or_company`).forEach(el => ui.doElemActive(el))  // TODO: avoid hardcode
+  byQuery(`#${queryId} .domain_or_company`).forEach(el => doElemActive(el))  // TODO: avoid hardcode
 }
 
 
@@ -855,7 +855,7 @@ function getIcon(name, title, body) {
 
 function setDropdownSelected(el, val) {
   if (el.parentNode) {
-    ui.setDropdownSelectedByContent(el.parentNode.nextElementSibling, val)
+    setDropdownSelectedByContent(el.parentNode.nextElementSibling, val)
     return val
   }
 }
@@ -1005,7 +1005,7 @@ function formatPhoneNumber(phoneNumber) {
 
 function getActivePopupName() {
   try {
-    return ui.byQuery(".modal.active")[0].id
+    return byQuery(".modal.active")[0].id
   } catch (error) {
     return ""
   }
@@ -1031,6 +1031,26 @@ function popPopup() {
     return stackList.pop()
   else
     return 0
+}
+
+
+// obj column thinning
+function thinningObj(data, arrExc = []) {
+  var t = Object.assign([], data)
+  t.forEach(r => {
+    Object.keys(r).forEach(c => {
+      var found = arrExc.find(cExc => cExc == c)
+      if (!isUndef(found)) {
+        delete r[c]
+      }
+    })
+  })
+  return t
+}
+
+
+function getVersion() {
+  return byQuery('meta[name="version"]')[0].content
 }
 
 
@@ -1071,5 +1091,5 @@ window.viui = {
   setDropdownSelected, setDropdownSelectedByValue, setDropdownSelectedByContent, getDropdownSelectedByValue,
   clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
   applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber,
-  getActivePopupName, getActiveTabName, pushPopup, popPopup
+  getActivePopupName, getActiveTabName, pushPopup, popPopup, thinningObj, getVersion
 }
