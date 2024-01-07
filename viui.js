@@ -273,8 +273,8 @@ function toastMsg(msg, typeMsg = "success", timeOut) {
 }
 
 
-function toastMandatoryField(reqField) {
-  toastMsg("Please fill/select all mandatory field(s)!", "error")
+function toastMandatoryField(reqField, msg = "Please fill/select all mandatory field(s)!") {
+  toastMsg(msg, "error")
   if (reqField.type == "select-one")
     reqField.style.setProperty("background-color", "#e85600")
   else {
@@ -569,8 +569,8 @@ function cleanupStates(states, arrExc = [], initVal = "") {
     var found = arrExc.find(el => el == k)
     if (isUndef(found))
       states[k] = initVal
-    else
-      states[k] = 0
+    // else
+    //   states[k] = 0
   }
 }
 
@@ -579,13 +579,13 @@ function initStates(states, inits, arrExc = []) {
   for (var k in states) {
     var found = arrExc.find(el => el == k)
     if (isUndef(found)) {
-      if ((inits[k] == window.EMPTY) || (inits[k] == null))
-        states[k] = ""
-      else
-        states[k] = inits[k]
+      // if ((inits[k] == window.EMPTY) || (inits[k] == null))
+      //   states[k] = ""
+      // else
+      states[k] = inits[k]
     }
-    else
-      states[k] = 0
+    // else
+    //   states[k] = 0
   }
 }
 
@@ -672,17 +672,27 @@ function setFieldsEditable(queryId, arrExc = []) {
 }
 
 
-function setEditable(el, arrExc = []) {
-  setFieldsEditable(el._anchor, arrExc)
-  // TODO: as param or cb
-  el.state.popup.saveOrEdit = "Save"
+function _setTitleButton(el, titleButton) {
+  // TODO: temp. until Basis will be everywhere
+  try {
+    el.state.list.saveOrEdit = titleButton
+  } catch (error) {
+    el.state.popup.saveOrEdit = titleButton
+  }
 }
 
 
-function setReadOnly(el, arrExc = []) {
+function setEditable(el, arrExc = [], titleButton = "Save") {
+  setFieldsEditable(el._anchor, arrExc)
+  // TODO: as param or cb
+  _setTitleButton(el, titleButton)
+}
+
+
+function setReadOnly(el, arrExc = [], titleButton = "Edit") {
   setFieldsReadOnly(el._anchor, arrExc)
   // TODO: as param or cb
-  el.state.popup.saveOrEdit = "Edit"
+  _setTitleButton(el, titleButton)
 }
 
 
@@ -929,7 +939,7 @@ function applyPermissionGroup(group, file = 2) {
 }
 
 
-function renderDataList(here, dataJson) {
+function renderDataList(here, dataJson, name = "name") {
   let dataList = document.createElement('datalist')
   dataList.id = `auto-${here.classList[0]}`
   here.setAttribute('list', dataList.id)
@@ -942,7 +952,7 @@ function renderDataList(here, dataJson) {
   for (let o of dataJson) {
     let option = document.createElement('option')
     option.id = o.id
-    option.textContent = o.name
+    option.textContent = eval(`o.${name}`)
     fragment.append(option)
   }
   dataList.append(fragment)
