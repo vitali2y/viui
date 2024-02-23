@@ -673,12 +673,13 @@ function setFieldsEditable(queryId, arrExc = []) {
 
 
 function _setTitleButton(el, titleButton) {
-  // TODO: temp. until Basis will be everywhere
-  try {
-    el.state.list.saveOrEdit = titleButton
-  } catch (error) {
-    el.state.popup.saveOrEdit = titleButton
-  }
+  el.state.list.saveOrEdit = titleButton
+  // // TODO: temp. until Basis will be everywhere
+  // try {
+  //   el.state.list.saveOrEdit = titleButton
+  // } catch (error) {
+  //   el.state.popup.saveOrEdit = titleButton
+  // }
 }
 
 
@@ -922,7 +923,7 @@ function clearDropdownSelected(query) {
 
 
 // TODO: deprecated
-function supportDropdownSelected(here, _prevVal, val) {
+function supportDropdownSelected(here, val) {
   if (!isUndef(here)) {
     try {
       return setDropdownSelectedByContent(here, val)
