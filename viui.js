@@ -1065,6 +1065,10 @@ function getVersion() {
 }
 
 
+function isAlpha(s) {
+  /^[a-zA-Z ]*$/.test(s)
+}
+
 // // overwriting system console.log for sending browser logs to the server
 // var orgLog = window.console.log
 // window.console.log = function () {
@@ -1102,5 +1106,6 @@ window.viui = {
   setDropdownSelected, setDropdownSelectedByValue, setDropdownSelectedByContent, getDropdownSelectedByValue,
   clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
   applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber,
-  getActivePopupName, getActiveTabName, pushPopup, popPopup, thinningObj, getVersion
+  getActivePopupName, getActiveTabName, pushPopup, popPopup, thinningObj, getVersion,
+  isAlpha
 }
