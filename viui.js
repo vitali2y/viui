@@ -832,6 +832,8 @@ function fetchData(app, cb) {
     // TODO: to chk stateJson.code
     if (typeof stateJson === "string")
       stateJson = JSON.parse(stateJson)
+    if (typeof stateJson.data === "string")
+      stateJson.data = JSON.parse(stateJson.data)
     if (isUndef(app._url)) {
       app.state.list = app.state.list.concat(stateJson.data)
       cb && cb()
