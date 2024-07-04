@@ -1068,7 +1068,7 @@ function getVersion() {
 
 
 function isAlpha(s) {
-  /^[a-zA-Z ]*$/.test(s)
+  return /^[a-zA-Z ]*$/.test(s)
 }
 
 // // overwriting system console.log for sending browser logs to the server
