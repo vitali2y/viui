@@ -381,8 +381,18 @@ function getStackTrace() {
 }
 
 
-function notImpl(msg = "Not implemented yet!") {
+function toastError(msg) {
   toastMsg(msg, "error")
+}
+
+
+function toastNotSaved() {
+  toastError("Failed to save!")
+}
+
+
+function toastNotImpl() {
+  toastError("Not implemented yet!")
 }
 
 
@@ -470,7 +480,8 @@ function postinitPictures(elName, tabName) {
 // post init for status columns
 function postinitStatuses(elName, tabName) {
   // TODO: to preliminary pass innerHTML and title sets via init()
-  byQuery(`#app-${elName} .content_${tabName} .status-tooltip`).forEach(el => {
+  byQuery(`#el-${elName} .content_${tabName} .status-tooltip`).forEach(el => {
+  // byQuery(`#app-${elName} .content_${tabName} .status-tooltip`).forEach(el => {
     switch (el.innerText) {
       // NOTE: innerHTML codes @ MaterialIcons.css
       case "1":
@@ -627,7 +638,7 @@ function trimStates(states, arrExc = []) {
   }
 }
 
-
+// TODO: to rename to setElemDisabled?
 function setFieldDisabled(el) {
   el.setAttribute("disabled", "disabled")
   if (el.classList[0] == "dropdown")
@@ -1098,7 +1109,7 @@ window.viui = {
   initOnPopupOpen, initOnPopupClose, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
   cleanChilds, toastMsg, toastMandatoryField,
-  verifyMandatoryFields, setActiveTab, getPosition, notImpl, getStackTrace, uploadFile, load, saveDefault,
+  verifyMandatoryFields, setActiveTab, getPosition, toastError, toastNotSaved, toastNotImpl, getStackTrace, uploadFile, load, saveDefault,
   save, remove, isObjEmpty, setTabActive, getDateFromSecs, getSecsFromDate, delay,
   postinitTitles, postinitPictures, postinitStatuses, postinitPrios,
   onDragStart, onDragOver, onDrop, onDragEnd, cleanupStates,
