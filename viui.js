@@ -90,7 +90,6 @@ function _callBackend(app, method, params, isSecureCall, cb) {
         if (resp.status >= 500 /* Internal Error */)
           toastMsg("Internal error!", "error")
         cb && cb([], resp.status)
-        // return undefined
       }
     })
     .then(fetched => {
@@ -391,8 +390,18 @@ function toastNotSaved() {
 }
 
 
+function toastNotFound() {
+  toastError("Did not find anything - please try again!")
+}
+
+
 function toastNotImpl() {
   toastError("Not implemented yet!")
+}
+
+
+function toastOops() {
+  toastError("Oops, something wrong happened!")
 }
 
 
@@ -481,7 +490,7 @@ function postinitPictures(elName, tabName) {
 function postinitStatuses(elName, tabName) {
   // TODO: to preliminary pass innerHTML and title sets via init()
   byQuery(`#el-${elName} .content_${tabName} .status-tooltip`).forEach(el => {
-  // byQuery(`#app-${elName} .content_${tabName} .status-tooltip`).forEach(el => {
+    // byQuery(`#app-${elName} .content_${tabName} .status-tooltip`).forEach(el => {
     switch (el.innerText) {
       // NOTE: innerHTML codes @ MaterialIcons.css
       case "1":
@@ -1082,6 +1091,7 @@ function isAlpha(s) {
   return /^[a-zA-Z ]*$/.test(s)
 }
 
+
 // // overwriting system console.log for sending browser logs to the server
 // var orgLog = window.console.log
 // window.console.log = function () {
@@ -1108,8 +1118,8 @@ window.viui = {
   byId, byName, byCls, byQuery, isUndef, callGet, callPost, callPut, callPostUnsecure, callDelete,
   initOnPopupOpen, initOnPopupClose, openPopup, closePopup, doAppAttrHidden, doAppAttrActive, doElemHidden,
   doElemHiddenById, doAppHidden, doElemActive, doElemActiveById, doAppActive, getCurrentApp,
-  cleanChilds, toastMsg, toastMandatoryField,
-  verifyMandatoryFields, setActiveTab, getPosition, toastError, toastNotSaved, toastNotImpl, getStackTrace, uploadFile, load, saveDefault,
+  cleanChilds, toastMsg, toastOops, toastMandatoryField,
+  verifyMandatoryFields, setActiveTab, getPosition, toastError, toastNotSaved, toastNotFound, toastNotImpl, getStackTrace, uploadFile, load, saveDefault,
   save, remove, isObjEmpty, setTabActive, getDateFromSecs, getSecsFromDate, delay,
   postinitTitles, postinitPictures, postinitStatuses, postinitPrios,
   onDragStart, onDragOver, onDrop, onDragEnd, cleanupStates,
@@ -1120,5 +1130,5 @@ window.viui = {
   clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
   applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber,
   getActivePopupName, getActiveTabName, pushPopup, popPopup, thinningObj, getVersion,
-  isAlpha
+  isAlpha,
 }
