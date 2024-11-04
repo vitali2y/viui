@@ -309,7 +309,7 @@ function verifyMandatoryFields(app, contentName) {
   var fieldsToCheck = byQuery(`#el-${app} ${contentName} .req-field`)
   for (var i = 0; i < fieldsToCheck.length; i += 1) {
     // TODO:
-    if ((fieldsToCheck[i].value == "") || (fieldsToCheck[i].value == "0")
+    if ((fieldsToCheck[i].value == "") || (fieldsToCheck[i].value == "0") || (fieldsToCheck[i].value == "˗")
     ) {
       toastMandatoryField(fieldsToCheck[i])
       isVerified = false
@@ -693,13 +693,7 @@ function setFieldsEditable(queryId, arrExc = []) {
 
 
 function _setTitleButton(el, titleButton) {
-  el.state.list.saveOrEdit = titleButton
-  // // TODO: temp. until Basis will be everywhere
-  // try {
-  //   el.state.list.saveOrEdit = titleButton
-  // } catch (error) {
-  //   el.state.popup.saveOrEdit = titleButton
-  // }
+  el.state.saveOrEdit = titleButton
 }
 
 
@@ -783,14 +777,27 @@ function renderAvatar(el, val, size = 30) {
 }
 
 
+function fetchData(app, cb) {
+  var url
+  if (isUndef(app._url))
+    url = app._name + "?"
+  else
+    url = app._url
+  callGet(`${url}limit=${app.limit}&offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
+    if (stateJson.code != 0)
+      toastOops()
+    else
+      cb && cb(stateJson.data)
+  })
+}
+
+
 function initSorting(app, cb) {
   // gathering the columns list for sorting
   app.sorting.cols = []
   for (const n of byQuery(`#el-${app._name} .sort-anchor`)[0].children) {
     app.sorting.cols.push(n.classList[0])
   }
-
-  app.state.list = []
 
   // setting temp columns' indexes
   let colIdx = 0
@@ -805,10 +812,10 @@ function initSorting(app, cb) {
   byQuery(`#app-${app._name} th`).forEach(c => {
     if (!isUndef(c.childNodes[1]) && c.childNodes[1].classList[0] == "sorting")
       c.addEventListener('click', function (evtEl, _evtPath) {
+        evtEl.stopPropagation()
         let idx = evtEl.target.parentElement.classList[1]
         if (!isUndef(idx)) {
           app.offset = 0
-          // TODO: app._anchor_state?
           app.state.list = []
           app.sorting.ordby = app.sorting.cols[idx]
           app.sorting.orddir = !app.sorting.orddir
@@ -828,47 +835,20 @@ function initSorting(app, cb) {
             cnt += 1
           })
 
-          // fetching data according to sorting preference
-          fetchData(app, cb)
+          cb && cb()
         }
-        evtEl.stopPropagation()
         return
       })
   })
-
-  // fetching data according to sorting preference
-  app.limit = featureList["limit"]
-  fetchData(app, cb)
 }
 
 
-function fetchData(app, cb) {
-  var url
-  if (isUndef(app._url))
-    url = app._name + "?"
-  else
-    url = app._url
-  callGet(`${url}limit=${app.limit}&offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
-    // TODO: to chk stateJson.code
-    if (typeof stateJson === "string")
-      stateJson = JSON.parse(stateJson)
-    if (typeof stateJson.data === "string")
-      stateJson.data = JSON.parse(stateJson.data)
-    if (isUndef(app._url)) {
-      app.state.list = app.state.list.concat(stateJson.data)
-      cb && cb()
-    }
-    else
-      cb && cb(stateJson.data)
-  })
-}
-
-
-function scrollData(app, cb) {
+function initScrolling(app, cb) {
   let scroll = byQuery(`#${app._anchor} .scroll-infinite`)[0]
   scroll
-    .addEventListener('scroll', function () {
+    .addEventListener('scroll', () => {
       if (scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight) {
+        // TODO: how to prevent fetchData call twice when scrolling first and sorting by column second?
         app.offset += featureList["offset"]
         cb && cb()
       }
@@ -1125,7 +1105,7 @@ window.viui = {
   onDragStart, onDragOver, onDrop, onDragEnd, cleanupStates,
   initStates, trimStates, setFieldDisabled, setFieldEnabled, setFieldsReadOnly, setFieldsEditable,
   setEditable, setReadOnly, fetchPulldownData, enableButton, disableButton, unhideButton, hideButton,
-  changeTab, initStaticTabs, renderAvatar, initSorting, fetchData, scrollData, getIcon,
+  changeTab, initStaticTabs, renderAvatar, initSorting, fetchData, initScrolling, getIcon,
   setDropdownSelected, setDropdownSelectedByValue, setDropdownSelectedByContent, getDropdownSelectedByValue,
   clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
   applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber,
