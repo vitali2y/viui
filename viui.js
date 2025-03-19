@@ -3,7 +3,7 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
-// v1.4.0
+// v1.5.0
 //
 
 
@@ -142,8 +142,8 @@ function initOnPopupClose(id, initFn) {
 }
 
 
-function openPopup(id, status = 'active') {
-  var i = `el-${id}`
+function openPopup(name, status = 'active') {
+  var i = `el-${name}`
   doElemHidden(byId(i), status)
   // TODO: redo (https://gist.github.com/amysimmons/3d228a9a57e30ec13ab1 )
   if (widgetOpenSettings[i])
@@ -151,8 +151,8 @@ function openPopup(id, status = 'active') {
 }
 
 
-function closePopup(id, status = 'active') {
-  var i = `el-${id}`
+function closePopup(name, status = 'active') {
+  var i = `el-${name}`
   doElemActive(byId(i), status)
   // TODO: redo (https://gist.github.com/amysimmons/3d228a9a57e30ec13ab1 )
   if (widgetCloseSettings[i])
@@ -268,7 +268,7 @@ function getSecsFromDate(d) {
   return new Date(d).getTime() / 1000
 }
 
-function toastMsg(msg, typeMsg = "success", timeOut) {
+function toastMsg(msg, typeMsg = "success", timeOut = 8) {
   if (featureList["toast"])
     featureList["toast"](msg, typeMsg, timeOut)
 }
@@ -492,7 +492,6 @@ function postinitPictures(elName, tabName) {
 function postinitStatuses(elName, tabName) {
   // TODO: to preliminary pass innerHTML and title sets via init()
   byQuery(`#el-${elName} .content_${tabName} .status-tooltip`).forEach(el => {
-    // byQuery(`#app-${elName} .content_${tabName} .status-tooltip`).forEach(el => {
     switch (el.innerText) {
       // NOTE: innerHTML codes @ MaterialIcons.css
       case "1":
@@ -591,8 +590,6 @@ function cleanupStates(states, arrExc = [], initVal = "") {
     var found = arrExc.find(el => el == k)
     if (isUndef(found))
       states[k] = initVal
-    // else
-    //   states[k] = 0
   }
 }
 
@@ -601,42 +598,10 @@ function initStates(states, inits, arrExc = []) {
   for (var k in states) {
     var found = arrExc.find(el => el == k)
     if (isUndef(found)) {
-      // if ((inits[k] == window.EMPTY) || (inits[k] == null))
-      //   states[k] = ""
-      // else
       states[k] = inits[k]
     }
-    // else
-    //   states[k] = 0
   }
 }
-
-
-// function initStates2(states, inits, arrExc = []) {
-
-//   function _initStates(states, inits, arrExc) {
-//     for (var k in inits) {
-//       var found = arrExc.find(el => el == k)
-//       if (isUndef(found)) {
-//         if ((inits[k] == window.EMPTY) || (inits[k] == null))
-//           states[k] = ""
-//         else
-//           states[k] = inits[k]
-//       }
-//       else
-//         states[k] = 0
-//     }
-//   }
-
-//   if (isUndef(inits)) // single item
-//     _initStates(states, inits, arrExc)
-//   else {
-//     states = []
-//     for (var i = 0; i < inits.length; i++) { // array of items
-//       _initStates(states[i], inits[i], arrExc)
-//     }
-//   }
-// }
 
 
 function trimStates(states, arrExc = []) {
@@ -648,6 +613,7 @@ function trimStates(states, arrExc = []) {
     }
   }
 }
+
 
 // TODO: to rename to setElemDisabled?
 function setFieldDisabled(el) {
@@ -700,14 +666,14 @@ function _setTitleButton(el, titleButton) {
 
 
 function setEditable(el, arrExc = [], titleButton = "Save") {
-  setFieldsEditable(el._anchor, arrExc)
+  setFieldsEditable(el.getAnchor(), arrExc)
   // TODO: as param or cb
   _setTitleButton(el, titleButton)
 }
 
 
 function setReadOnly(el, arrExc = [], titleButton = "Edit") {
-  setFieldsReadOnly(el._anchor, arrExc)
+  setFieldsReadOnly(el.getAnchor(), arrExc)
   // TODO: as param or cb
   _setTitleButton(el, titleButton)
 }
@@ -746,9 +712,9 @@ function hideButton(el, btnName) {
 // TODO: "tab_" prefix is passed in activeTab, when it's not in activeTabs in initStaticTabs()
 function changeTab(app, statePopups, activeTab) {
   var q = Object.keys(statePopups)
-  var tabsAll = []
-  Object.keys(q).forEach(i => { if (q[i].startsWith("tab_")) tabsAll.push(q[i]) })
-  setTabActive(app, tabsAll, activeTab)
+  var allTabs = []
+  Object.keys(q).forEach(i => { if (q[i].startsWith("tab_")) allTabs.push(q[i]) })
+  setTabActive(app, allTabs, activeTab)
   return activeTab
 }
 
@@ -782,7 +748,7 @@ function renderAvatar(el, val, size = 30) {
 function fetchData(app, cb) {
   var url
   if (isUndef(app._url))
-    url = app._name + "?"
+    url = app.getName() + "?"
   else
     url = app._url
   callGet(`${url}limit=${app.limit}&offset=${app.offset}&ordby=${app.sorting.ordby}&orddir=${app.sorting.orddir ? "ASC" : "DESC"}`, (stateJson) => {
@@ -795,23 +761,26 @@ function fetchData(app, cb) {
 
 
 function initSorting(app, cb) {
-  // gathering the columns list for sorting
+  // gathering the valid columns list for further sorting
   app.sorting.cols = []
-  for (const n of byQuery(`#el-${app._name} .sort-anchor`)[0].children) {
-    app.sorting.cols.push(n.classList[0])
+  for (const n of byQuery(`#el-${app.getName()} .sort-anchor`)[0].children) {
+    var isSkipped = false
+    n.classList.forEach(v => { if (v == 'd-none') isSkipped = true })
+    if (!isSkipped && n.classList.length > 0)
+      app.sorting.cols.push(n.classList[0])
   }
 
   // setting temp columns' indexes
   let colIdx = 0
   // TODO: to remove these temp indexes later
-  byQuery(`#app-${app._name} th`).forEach(c => {
+  byQuery(`#app-${app.getName()} th`).forEach(c => {
     if (!isUndef(c.childNodes[1]) && c.childNodes[1].classList[0] == "sorting")
       doElemHidden(c.childNodes[1], colIdx)
     colIdx += 1
   })
 
   // setting columns' handlers
-  byQuery(`#app-${app._name} th`).forEach(c => {
+  byQuery(`#app-${app.getName()} th`).forEach(c => {
     if (!isUndef(c.childNodes[1]) && c.childNodes[1].classList[0] == "sorting")
       c.addEventListener('click', function (evtEl, _evtPath) {
         evtEl.stopPropagation()
@@ -823,14 +792,14 @@ function initSorting(app, cb) {
           app.sorting.orddir = !app.sorting.orddir
 
           // sorting icons management
-          byQuery(`#app-${app._name} thead i`).forEach(c => { c.classList.remove(c.classList[1]) })
+          byQuery(`#app-${app.getName()} thead i`).forEach(c => { c.classList.remove(c.classList[1]) })
           let cnt = 0
-          byQuery(`#app-${app._name} thead i`).forEach(c => {
+          byQuery(`#app-${app.getName()} thead i`).forEach(c => {
             if (cnt == idx) {
               if (app.sorting.orddir)
-                byQuery(`#app-${app._name} thead i`)[idx].classList.add("md-arrow_upward")
+                byQuery(`#app-${app.getName()} thead i`)[idx].classList.add("md-arrow_upward")
               else
-                byQuery(`#app-${app._name} thead i`)[idx].classList.add("md-arrow_downward")
+                byQuery(`#app-${app.getName()} thead i`)[idx].classList.add("md-arrow_downward")
             }
             else
               c.classList.add("md-swap_vert")
@@ -846,7 +815,7 @@ function initSorting(app, cb) {
 
 
 function initScrolling(app, cb) {
-  let scroll = byQuery(`#${app._anchor} .scroll-infinite`)[0]
+  let scroll = byQuery(`#${app.getAnchor()} .scroll-infinite`)[0]
   scroll
     .addEventListener('scroll', () => {
       if (scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight) {
