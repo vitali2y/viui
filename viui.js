@@ -3,7 +3,7 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
-// v1.5.0
+// v1.6.0
 //
 
 
@@ -761,8 +761,14 @@ function fetchData(app, cb) {
 
 
 function initSorting(app, cb) {
-  // gathering the valid columns list for further sorting
   app.sorting.cols = []
+  if (byQuery(`#el-${app.getName()} .sort-anchor`).length == 0) {
+    app.state.list = []
+    cb && cb()
+    return
+  }
+
+  // gathering the valid columns list for further sorting
   for (const n of byQuery(`#el-${app.getName()} .sort-anchor`)[0].children) {
     var isSkipped = false
     n.classList.forEach(v => { if (v == 'd-none') isSkipped = true })
@@ -1043,6 +1049,27 @@ function isAlpha(s) {
 }
 
 
+function loadJS(jsFilePath, cb) {
+  var js = document.createElement("script")
+  js.type = "text/javascript"
+  js.src = jsFilePath
+  if (cb) {
+    js.onreadystatechange = cb
+    js.onload = cb
+  }
+
+  document.body.appendChild(js)
+}
+
+
+function browserDetection() {
+  var N = navigator.appName, ua = navigator.userAgent, tem
+  var M = ua.match(/(opera|chrome|safari|firefox|msie)\/?\s*(\.?\d+(\.\d+)*)/i)
+  if (M && (tem = ua.match(/version\/([\.\d]+)/i)) != null) M[2] = tem[1]
+  return M ? [M[1], M[2]] : [N, navigator.appVersion, '-?']
+}
+
+
 // // overwriting system console.log for sending browser logs to the server
 // var orgLog = window.console.log
 // window.console.log = function () {
@@ -1081,5 +1108,5 @@ window.viui = {
   clearDropdownSelected, clearDropdownSelected2, supportDropdownSelected,
   applyPermissionGroup, renderDataList, lightAutoField, setAutoField, formatPhoneNumber,
   getActivePopupName, getActiveTabName, pushPopup, popPopup, thinningObj, getVersion,
-  isAlpha,
+  isAlpha, loadJS, browserDetection,
 }
