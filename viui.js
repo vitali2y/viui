@@ -3,7 +3,7 @@
 // Very sImple UI <3 Spectre.css & Simulacra.js
 // https://github.com/vitali2y/viui
 //
-// v1.6.0
+// v1.7.0
 //
 
 
@@ -89,13 +89,15 @@ function _callBackend(app, method, params, isSecureCall, cb) {
       else {
         if (resp.status == 403 /* Forbidden */)
           toastMsg("Forbidden!", "error")
-        if (resp.status >= 500 /* Internal Error */)
-          toastMsg("Internal error!", "error")
+        else
+          toastMsg("Internal Error!", "error")
         cb && cb([], resp.status)
       }
     })
     .then(fetched => {
       featureList["spin-on"] && featureList["spin-off"]()
+      if (isUndef(fetched))
+        fetched = []
       cb && cb(fetched, 0)
     })
     .catch(err => console.log("oops, error:", err))
